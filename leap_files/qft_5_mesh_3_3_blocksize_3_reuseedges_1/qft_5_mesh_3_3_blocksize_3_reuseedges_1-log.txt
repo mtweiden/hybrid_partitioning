@@ -1,0 +1,109 @@
+2021-06-12 00:03:40.342956 > 	There are 16 processors available to Pool.
+2021-06-12 00:03:40.343221 > 	The branching factor is 4.
+2021-06-12 00:03:40.343446 > 	The beam factor is 4.
+2021-06-12 00:03:40.346685 > 	New best! 0.031824462804815656 at depth 0
+2021-06-12 00:03:40.347893 > 	Popped a node with score: 0.031824462804815656 at depth: 0
+2021-06-12 00:03:40.368325 > 	Layer completed after 0.02016485499999998 seconds
+2021-06-12 00:03:40.369248 > 	Popped a node with score: 0.17253434312312566 at depth: 1
+2021-06-12 00:03:40.369363 > 	Popped a node with score: 0.17253437287975149 at depth: 1
+2021-06-12 00:03:40.369462 > 	Popped a node with score: 0.3097942637954014 at depth: 1
+2021-06-12 00:03:40.369556 > 	Popped a node with score: 0.3098013348551516 at depth: 1
+2021-06-12 00:03:40.386838 > 	New best! score: 0.004815273937082032 at depth: 2
+2021-06-12 00:03:40.388998 > 	New best! score: 0.00481527332819498 at depth: 2
+2021-06-12 00:03:40.603486 > 	Layer completed after 0.23362653499999997 seconds
+2021-06-12 00:03:40.605893 > 	Popped a node with score: 0.00481527332819498 at depth: 2
+2021-06-12 00:03:40.606017 > 	Popped a node with score: 0.004815273434017442 at depth: 2
+2021-06-12 00:03:40.606130 > 	Popped a node with score: 0.004815273937082032 at depth: 2
+2021-06-12 00:03:40.606248 > 	Popped a node with score: 0.004815274326160357 at depth: 2
+2021-06-12 00:03:40.640490 > 	New best! score: 0.004815273328150349 at depth: 3
+2021-06-12 00:03:40.645204 > 	Predicted best value nan for new best with delta nan
+2021-06-12 00:03:40.647277 > 	New best! score: 0.004815273327947733 at depth: 3
+2021-06-12 00:03:40.648774 > 	Predicted best value 0.004815273328150349 for new best with delta 2.0261570199409107e-13
+2021-06-12 00:03:40.681874 > 	Layer completed after 0.075393708 seconds
+2021-06-12 00:03:40.685189 > 	Popped a node with score: 0.023937468835341535 at depth: 2
+2021-06-12 00:03:40.685303 > 	Popped a node with score: 0.023937468883564073 at depth: 2
+2021-06-12 00:03:40.685405 > 	Popped a node with score: 0.023937469026666713 at depth: 2
+2021-06-12 00:03:40.685514 > 	Popped a node with score: 0.02393748614312985 at depth: 2
+2021-06-12 00:03:40.749513 > 	Layer completed after 0.06371149799999998 seconds
+2021-06-12 00:03:40.755480 > 	Popped a node with score: 0.004815273327947733 at depth: 3
+2021-06-12 00:03:40.755698 > 	Popped a node with score: 0.004815273328150349 at depth: 3
+2021-06-12 00:03:40.755834 > 	Popped a node with score: 0.00481527333203946 at depth: 3
+2021-06-12 00:03:40.756016 > 	Popped a node with score: 0.0048152733378749035 at depth: 3
+2021-06-12 00:03:40.868323 > 	Layer completed after 0.11191498099999997 seconds
+2021-06-12 00:03:40.875052 > 	Popped a node with score: 0.004815273440727297 at depth: 3
+2021-06-12 00:03:40.875291 > 	Popped a node with score: 0.0048152734902719985 at depth: 3
+2021-06-12 00:03:40.875477 > 	Popped a node with score: 0.00481527349584876 at depth: 3
+2021-06-12 00:03:40.875596 > 	Popped a node with score: 0.0048152739263175315 at depth: 3
+2021-06-12 00:03:41.031619 > 	Layer completed after 0.15576704600000024 seconds
+2021-06-12 00:03:41.040037 > 	Popped a node with score: 0.023937468841598752 at depth: 3
+2021-06-12 00:03:41.040468 > 	Popped a node with score: 0.02393746925468776 at depth: 3
+2021-06-12 00:03:41.040750 > 	Popped a node with score: 0.023937469402026124 at depth: 3
+2021-06-12 00:03:41.040877 > 	Popped a node with score: 0.0239374694434088 at depth: 3
+2021-06-12 00:03:41.226328 > 	Layer completed after 0.18505818800000018 seconds
+2021-06-12 00:03:41.237654 > 	Popped a node with score: 0.023937469494038188 at depth: 3
+2021-06-12 00:03:41.237782 > 	Popped a node with score: 0.023937470778258252 at depth: 3
+2021-06-12 00:03:41.237885 > 	Popped a node with score: 0.023937470990516352 at depth: 3
+2021-06-12 00:03:41.237984 > 	Popped a node with score: 0.023937471889191597 at depth: 3
+2021-06-12 00:03:41.475642 > 	Layer completed after 0.23729950099999986 seconds
+2021-06-12 00:03:41.489590 > 	Popped a node with score: 0.004815273328076963 at depth: 4
+2021-06-12 00:03:41.489728 > 	Popped a node with score: 0.004815273328141911 at depth: 4
+2021-06-12 00:03:41.489893 > 	Popped a node with score: 0.004815273328312442 at depth: 4
+2021-06-12 00:03:41.489999 > 	Popped a node with score: 0.0048152733288047145 at depth: 4
+2021-06-12 00:03:41.745382 > 	Layer completed after 0.2551512279999999 seconds
+2021-06-12 00:03:41.758655 > 	Popped a node with score: 0.004815273328823588 at depth: 4
+2021-06-12 00:03:41.758787 > 	Popped a node with score: 0.004815273329256686 at depth: 4
+2021-06-12 00:03:41.758908 > 	Popped a node with score: 0.004815273329286773 at depth: 4
+2021-06-12 00:03:41.759123 > 	Popped a node with score: 0.0048152733323539865 at depth: 4
+2021-06-12 00:03:42.193137 > 	Layer completed after 0.4336303699999995 seconds
+2021-06-12 00:03:42.212056 > 	Popped a node with score: 0.004815273335020742 at depth: 4
+2021-06-12 00:03:42.212260 > 	Popped a node with score: 0.004815273344172422 at depth: 4
+2021-06-12 00:03:42.212435 > 	Popped a node with score: 0.0048152733506481304 at depth: 4
+2021-06-12 00:03:42.212617 > 	Popped a node with score: 0.004815273372827944 at depth: 4
+2021-06-12 00:03:42.729401 > 	Layer completed after 0.5164402150000003 seconds
+2021-06-12 00:03:42.747762 > 	Popped a node with score: 0.004815273622673422 at depth: 4
+2021-06-12 00:03:42.747888 > 	Popped a node with score: 0.0048152745162638455 at depth: 4
+2021-06-12 00:03:42.748165 > 	Popped a node with score: 0.004815275426006571 at depth: 4
+2021-06-12 00:03:42.748281 > 	Popped a node with score: 0.004815276908030075 at depth: 4
+2021-06-12 00:03:42.938618 > 	New best! score: 0.004815273327934078 at depth: 5
+2021-06-12 00:03:42.939366 > 	Predicted best value 0.004815272718870112 for new best with delta -6.090639659284136e-10
+2021-06-12 00:03:43.004959 > 	There are 16 processors available to Pool.
+2021-06-12 00:03:43.005175 > 	The branching factor is 4.
+2021-06-12 00:03:43.005327 > 	The beam factor is 4.
+2021-06-12 00:03:43.016291 > 	New best! 0.0048152733792165 at depth 0
+2021-06-12 00:03:43.018514 > 	Popped a node with score: 0.0048152733792165 at depth: 0
+2021-06-12 00:03:43.042301 > 	New best! score: 0.004815273328183656 at depth: 1
+2021-06-12 00:03:43.051016 > 	Layer completed after 0.03214825100000063 seconds
+2021-06-12 00:03:43.052557 > 	Popped a node with score: 0.004815273328183656 at depth: 1
+2021-06-12 00:03:43.052678 > 	Popped a node with score: 0.004815273328256153 at depth: 1
+2021-06-12 00:03:43.052783 > 	Popped a node with score: 0.29629826538566717 at depth: 1
+2021-06-12 00:03:43.052882 > 	Popped a node with score: 0.29629838065971525 at depth: 1
+2021-06-12 00:03:43.108193 > 	New best! score: 0.0048152733280383275 at depth: 2
+2021-06-12 00:03:43.315599 > 	Layer completed after 0.26224222299999944 seconds
+2021-06-12 00:03:43.321214 > 	Popped a node with score: 0.0048152733280383275 at depth: 2
+2021-06-12 00:03:43.321391 > 	Popped a node with score: 0.0048152733283267635 at depth: 2
+2021-06-12 00:03:43.321521 > 	Popped a node with score: 0.004815273328961145 at depth: 2
+2021-06-12 00:03:43.321719 > 	Popped a node with score: 0.004815273405000875 at depth: 2
+2021-06-12 00:03:43.467291 > 	Layer completed after 0.14535319400000013 seconds
+2021-06-12 00:03:43.475929 > 	Popped a node with score: 0.004815273448908308 at depth: 2
+2021-06-12 00:03:43.476060 > 	Popped a node with score: 0.004815275097933225 at depth: 2
+2021-06-12 00:03:43.476213 > 	Popped a node with score: 0.004815277474180091 at depth: 2
+2021-06-12 00:03:43.476399 > 	Popped a node with score: 0.004815273328468539 at depth: 3
+2021-06-12 00:03:43.525557 > 	New best! score: 0.0048152733279837046 at depth: 3
+2021-06-12 00:03:43.534191 > 	Predicted best value 0.004815273327892999 for new best with delta -9.070522111187529e-14
+2021-06-12 00:03:43.700610 > 	Layer completed after 0.22377338300000105 seconds
+2021-06-12 00:03:43.710911 > 	Popped a node with score: 0.0048152733279837046 at depth: 3
+2021-06-12 00:03:43.711123 > 	Popped a node with score: 0.00481527332816567 at depth: 3
+2021-06-12 00:03:43.711345 > 	Popped a node with score: 0.004815273328349412 at depth: 3
+2021-06-12 00:03:43.711574 > 	Popped a node with score: 0.004815273329577652 at depth: 3
+2021-06-12 00:03:43.988426 > 	Layer completed after 0.27666677900000103 seconds
+2021-06-12 00:03:44.004513 > 	Popped a node with score: 0.004815273331406633 at depth: 3
+2021-06-12 00:03:44.004647 > 	Popped a node with score: 0.004815273334579984 at depth: 3
+2021-06-12 00:03:44.004818 > 	Popped a node with score: 0.0048152733356993105 at depth: 3
+2021-06-12 00:03:44.004936 > 	Popped a node with score: 0.004815273375033957 at depth: 3
+2021-06-12 00:03:44.084292 > 	New best! score: 2.220446049250313e-16 at depth: 4
+2021-06-12 00:03:44.100479 > 	Predicted best value 0.004815273327868612 for new best with delta 0.00481527332786839
+2021-06-12 00:03:44.117405 > 	New best! score: 0.0 at depth: 4
+2021-06-12 00:03:44.117979 > 	Predicted best value 0.001444581998360739 for new best with delta 0.001444581998360739
+2021-06-12 00:03:44.323485 > 	Layer completed after 0.3181883110000001 seconds
+2021-06-12 00:03:44.357292 > 	Finished compilation at depth 4 with score 0.0 after 1.3804651220000004 seconds.
+2021-06-12 00:03:44.361024 > 	Finished all sub-compilations at depth 9 with score 0.0 after 4.044743350999999 seconds.

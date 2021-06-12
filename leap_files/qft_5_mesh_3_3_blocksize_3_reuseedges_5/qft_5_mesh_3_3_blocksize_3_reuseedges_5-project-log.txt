@@ -1,0 +1,10 @@
+2021-06-12 00:03:57.014440 > 	Started running project qft_5_mesh_3_3_blocksize_3_reuseedges_5
+2021-06-12 00:03:57.014611 > 	qft_5_mesh_3_3_blocksize_3_reuseedges_5	Not started.
+2021-06-12 00:03:57.014822 > 	Starting compilation of qft_5_mesh_3_3_blocksize_3_reuseedges_5
+2021-06-12 00:03:57.071768 > 	Finished compilation of qft_5_mesh_3_3_blocksize_3_reuseedges_5
+2021-06-12 00:03:57.072482 > 	Recorded results from compilation.
+2021-06-12 00:03:57.072806 > 	Deleted checkpoint file.
+2021-06-12 00:03:57.073117 > 	qft_5_mesh_3_3_blocksize_3_reuseedges_5	Complete!
+2021-06-12 00:03:57.073229 > 	Finished running project qft_5_mesh_3_3_blocksize_3_reuseedges_5
+2021-06-12 00:03:57.073547 > 	Started postprocessing of qft_5_mesh_3_3_blocksize_3_reuseedges_5
+2021-06-12 00:03:57.074033 > 	Finished postprocessing of qft_5_mesh_3_3_blocksize_3_reuseedges_5
