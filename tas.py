@@ -18,32 +18,11 @@ logging.getLogger('bqskit.compiler').setLevel(logging.DEBUG)
 
 from mapping import do_layout, do_routing, find_num_qudits
 from hybrid_topology import get_hybrid_edge_set, save_hybrid_topology
+from intermediate_results import check_for_synthesis_results, find_block_errors
 
 from math import ceil, sqrt
 from os.path import exists
-from shutil import rmtree
 import argparse
-from re import match, search
-import numpy as np
-
-
-def check_for_leap_files(leap_proj):
-	"""
-	If the leap project was previously completed, return true.
-
-	Args:
-		Project to check for in the leap_files directory.
-	"""
-	if not exists("leap_files/" + leap_proj):
-		return False
-	# If finished postprocessing, return True
-	with open("leap_files/"+leap_proj+"/"+leap_proj + "-project-log.txt") as f:
-		for line in f:
-			if search("Finished postprocessing", line):
-				return True
-	# If exited the loop, delete the directory and return false.
-	rmtree("leap_files/" + leap_proj)
-	return False
 
 
 if __name__ == '__main__':
