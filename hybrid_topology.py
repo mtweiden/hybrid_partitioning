@@ -76,8 +76,6 @@ def add_logical_edge(
 				# Find all vertices that are blocksize-1 away from A
 				candidates = descendants_at_distance(physical_graph, a, 
 					options["block_size"] - 2)
-				print("Edge ", str(a), " ", str(b))
-				print("candidates ", candidates)
 				# Add an edge between the closest vertex from above and B
 				best_dist = worst_dist
 				best_node = a
@@ -87,7 +85,6 @@ def add_logical_edge(
 						best_dist = dist
 						best_node = node
 				hybrid_graph.add_edge(best_node, b)
-				print("new edge ", best_node, " ", b)
 			else:
 				hybrid_graph.add_edge(a, b)
 	return hybrid_graph

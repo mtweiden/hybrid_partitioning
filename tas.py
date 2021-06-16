@@ -1,43 +1,49 @@
 from __future__ import annotations
-from typing import Sequence
-
-from scipy.stats import unitary_group
-from scipy.stats.morestats import circmean
-
-from qiskit.quantum_info import OneQubitEulerDecomposer
-
 from sys import path
 path.append("../bqskit")
 
-from bqskit.ir import Circuit
+from bqskit.compiler.passes.synthesis.leap import LEAPSynthesisPass
+from bqskit.compiler.search.generators.simple import SimpleLayerGenerator
+from bqskit.ir.gates.parameterized.unitary import VariableUnitaryGate
+
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
+from bqskit.compiler.passes.util.unfold import UnfoldPass
+from bqskit.compiler.passes.util.variabletou3 import VariableToU3Pass
 
-#from qsearch.utils import endian_reverse
+# Enable logging
+import logging
+logging.getLogger('bqskit.compiler').setLevel(logging.DEBUG)
 
 from mapping import do_layout, do_routing, find_num_qudits
 from hybrid_topology import get_hybrid_edge_set, save_hybrid_topology
-from old_codebase import call_old_codebase_leap, parse_leap_files, check_for_leap_files
 
 from math import ceil, sqrt
 from os.path import exists
+from shutil import rmtree
 import argparse
+from re import match, search
+import numpy as np
 
 
-def get_sub_topology(
-	topology : Sequence[Sequence[int]],
-	subset : list[int]
-) -> set[tuple[int]]:
-	subset_map_inv = {i:subset[i] for i in range(len(subset))}
-	subset_map = {v: k for k, v in subset_map_inv.items()}
+def check_for_leap_files(leap_proj):
+	"""
+	If the leap project was previously completed, return true.
 
-	sub_topology = set()
-	for edge in topology:
-		if edge[0] in subset and edge[1] in subset:
-			sub_topology.add((subset_map[edge[0]], subset_map[edge[1]]))
-			sub_topology.add((subset_map[edge[1]], subset_map[edge[0]]))
-	return sub_topology
+	Args:
+		Project to check for in the leap_files directory.
+	"""
+	if not exists("leap_files/" + leap_proj):
+		return False
+	# If finished postprocessing, return True
+	with open("leap_files/"+leap_proj+"/"+leap_proj + "-project-log.txt") as f:
+		for line in f:
+			if search("Finished postprocessing", line):
+				return True
+	# If exited the loop, delete the directory and return false.
+	rmtree("leap_files/" + leap_proj)
+	return False
 
 
 if __name__ == '__main__':
@@ -60,7 +66,6 @@ if __name__ == '__main__':
 		num_q = find_num_qudits(qasm_file)
 		num_p = ceil(sqrt(num_q))
 		coupling_map = "coupling_maps/mesh_%d_%d" %(num_p, num_p)
-		#coupling_map = "coupling_maps/alltoall_5"
 
 		options = {
 			"block_size"	 : args.block_size,
@@ -120,31 +125,29 @@ if __name__ == '__main__':
 			machine = MachineModel(circuit.get_size(), hybrid)
 			data = {"machine_model": machine}
 			partitioner.run(circuit, data)
+			instantiate_options = {
+				'min_iters': 0,
+				'diff_tol_r': 1e-5,
+				'dist_tol': 1e-11,
+				'max_iters': 2500,
+			}
+			layer_generator = SimpleLayerGenerator(
+				single_qudit_gate_1=VariableUnitaryGate(1),
+			)
+			synthesizer = LEAPSynthesisPass(
+				layer_generator=layer_generator,
+				instantiate_options=instantiate_options
+			)
 			print("="*80)
 			print("Doing Synthesis on %s..." %(layout_qasm_file))
 			print("="*80)
-			proj_name = mapped_qasm_file.split("mapped_qasm/")[-1]
-			unitaries = [op.get_unitary().get_numpy() for op in circuit]
-			locations = [op.location for op in circuit]
-			synthesized_qasm = "OPENQASM 2.0;\ninclude \"qelib1.inc\";" + \
-				"\nqreg q[%d];\n"%(circuit.get_size())
-			for i in range(len(unitaries)):
-				unitary = unitaries[i]
-				q_map = {k:locations[i][k] for k in range(len(locations[i]))}
-				if not check_for_leap_files(proj_name + "_" + str(i)):
-					synthesized_qasm += call_old_codebase_leap(
-						unitary, 
-						list(get_sub_topology(hybrid, locations[i])),
-						proj_name + "_" + str(i),
-						q_map
-					)
-				else:
-					synthesized_qasm += parse_leap_files(proj_name + "_" \
-						+ str(i), q_map)
+			synthesizer.run(circuit, data)
+			UnfoldPass().run(circuit, data)
+			VariableToU3Pass().run(circuit, data)
 
 			# Clean up synthesized qasm
 			with open(synthesized_qasm_file, 'w') as f:
-				f.write(synthesized_qasm)
+				f.write(OPENQASM2Language().encode(circuit))
 
 		# Routing
 		print("="*80)
