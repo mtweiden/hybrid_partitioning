@@ -14,7 +14,7 @@ from bqskit.compiler.passes.util.variabletou3 import VariableToU3Pass
 
 # Enable logging
 import logging
-logging.getLogger('bqskit.compiler').setLevel(logging.DEBUG)
+logging.getLogger('bqskit').setLevel(logging.DEBUG)
 
 from mapping import do_layout, do_routing, find_num_qudits
 from hybrid_topology import get_hybrid_edge_set, save_hybrid_topology
@@ -22,6 +22,7 @@ from intermediate_results import check_for_synthesis_results, find_block_errors
 
 from math import ceil, sqrt
 from os.path import exists
+from os import mkdir
 import argparse
 
 
@@ -60,18 +61,26 @@ if __name__ == '__main__':
 			+ "_blocksize_" + str(args.block_size)
 		mapped_qasm_file = "mapped_qasm/" + target_name \
 			+ "_blocksize_" + str(args.block_size)
+		checkpoint_dir = "leap_files/" + target_name \
+			+ "_blocksize_" + str(args.block_size)
 		if args.reuse_edges:
 			layout_qasm_file += "_reuseedges"
 			synthesized_qasm_file += "_reuseedges"
 			mapped_qasm_file += "_reuseedges"
+			checkpoint_dir += "_reuseedges"
 		if args.shortest_path:
 			layout_qasm_file += "_shortestpath"
 			synthesized_qasm_file += "_shortestpath"
 			mapped_qasm_file += "_shortestpath"
+			checkpoint_dir += "_shortestpath"
 		if args.add_interactors:
 			layout_qasm_file += "_addinteractors"
 			synthesized_qasm_file += "_addinteractors"
 			mapped_qasm_file += "_addinteractors"
+			checkpoint_dir += "_addinteractors"
+
+		if not exists(checkpoint_dir):
+			mkdir(checkpoint_dir)
 
 		# Layout
 		print("="*80)
@@ -106,16 +115,17 @@ if __name__ == '__main__':
 			partitioner.run(circuit, data)
 			instantiate_options = {
 				'min_iters': 0,
-				'diff_tol_r': 1e-5,
+				'diff_tol_r': 1e-4,
 				'dist_tol': 1e-11,
-				'max_iters': 2500,
+				'max_iters': 1500,
 			}
 			layer_generator = SimpleLayerGenerator(
 				single_qudit_gate_1=VariableUnitaryGate(1),
 			)
 			synthesizer = LEAPSynthesisPass(
 				layer_generator=layer_generator,
-				instantiate_options=instantiate_options
+				instantiate_options=instantiate_options,
+				checkpoint_dir=checkpoint_dir
 			)
 			print("="*80)
 			print("Doing Synthesis on %s..." %(layout_qasm_file))
