@@ -80,6 +80,16 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
 
+def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
+	with open(input_qasm_file, 'r') as in_qasm:
+		with open(output_qasm_file, 'w') as out_qasm:
+			out_qasm.write(in_qasm.read())
+
+
+def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
+	with open(input_qasm_file, 'r') as in_qasm:
+		with open(output_qasm_file, 'w') as out_qasm:
+			out_qasm.write(in_qasm.read())
 
 if __name__ == "__main__":
 	if len(argv) != 3:

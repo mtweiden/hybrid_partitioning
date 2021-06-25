@@ -187,13 +187,20 @@ def save_hybrid_topology(
 	circ = qasm_file.split('qasm/')[-1].split('.qasm')[0]
 	coup = coupling_file.split('coupling_maps/')[-1]
 	size = str(options["block_size"])
-	new_name = "hybrid_" + circ + "_" + coup + "_blocksize_" + size
-	if options["reuse_edges"]:
-		new_name += "_reuseedges"
-	if options["shortest_path"]:
-		new_name += "_shortestpath"
-	if options["add_interactors"]:
-		new_name += "_addinteractors"
+	new_name = circ + "_" + coup + "_blocksize_" + size
 	
-	with open('coupling_maps/' + new_name, 'wb') as f:
+	with open('subtopology_files/' + new_name, 'wb') as f:
 		dump(hybrid_graph, f)
+
+def load_hybrid_topology(
+	qasm_file : str,
+	coupling_file : str,
+	options : dict[str]
+) -> Sequence[Sequence[int]]:
+	circ = qasm_file.split('qasm/')[-1].split('.qasm')[0]
+	coup = coupling_file.split('coupling_maps/')[-1]
+	size = str(options["block_size"])
+	new_name = circ + "_" + coup + "_blocksize_" + size
+	
+	with open('subtopology_files/' + new_name, 'rb') as f:
+		return load(f)

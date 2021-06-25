@@ -1,24 +1,27 @@
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
+from bqskit.compiler.passes.util.intermediate import RestoreIntermediatePass
 from bqskit import Circuit
 
-from scipy.linalg import norm
-
-with open("synthesized_qasm/qft_5_mesh_3_3_blocksize_3_shortestpath", 'r') as f:
-    original = OPENQASM2Language().decode(f.read())
-with open("synthesized_qasm/qft_5_mesh_3_3_blocksize_3_reuseedges", 'r') as f:
-    synthesized = OPENQASM2Language().decode(f.read())
-
+filename = "qft_5"
+coupling = "mesh_3_3"
+blocksize = "blocksize_5"
 num_q = 9
 
-original_unitary     = original.get_unitary().get_numpy()
-synthesized_unitary  = synthesized.get_unitary().get_numpy()
+layoutname = f"layout_qasm/{filename}_{coupling}"
+synthname  = f"synthesized_qasm/{filename}_{coupling}_{blocksize}"
+mappedname = f"mapped_qasm/{filename}_{coupling}_{blocksize}"
+with open(layoutname, 'r') as f:
+    layout = OPENQASM2Language().decode(f.read())
+with open(synthname, 'r') as f:
+    synth = OPENQASM2Language().decode(f.read())
+with open(mappedname, 'r') as f:
+    mapp = OPENQASM2Language().decode(f.read())
+
+layout_unitary = layout.get_unitary()
+synth_unitary = synth.get_unitary()
+mapp_unitary = mapp.get_unitary()
 
 import numpy as np
-np.set_printoptions(formatter={'complex_kind': "{0:.3f}".format})
-
-for i in range(2**num_q):
-    for j in range(2**num_q):
-        if abs(original_unitary[i][j] + synthesized_unitary[i][j]) > 1e-7:
-            print("(%d,%d)"%(i,j), original_unitary[i][j], "    ", synthesized_unitary[i][j])
-
-print(norm(original_unitary - synthesized_unitary))
+print("Distance b/w layout and synth: ", layout_unitary.get_distance_from(synth_unitary))
+print("Distance b/w layout and mapp: ", layout_unitary.get_distance_from(mapp_unitary))
+print("Distance b/w mapp and synth: ", synth_unitary.get_distance_from(mapp_unitary))

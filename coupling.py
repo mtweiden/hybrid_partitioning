@@ -129,6 +129,7 @@ def get_coupling_map(
     return (num_p, coup_map)
 
 if __name__ == "__main__":
+	get_coupling_map("mesh", 2, True)
 	get_coupling_map("mesh", 4, True)
 	get_coupling_map("mesh", 8, True)
 	get_coupling_map("mesh", 16, True)
