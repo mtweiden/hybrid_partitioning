@@ -4,11 +4,13 @@ logical-physical topology.
 """
 
 from __future__ import annotations
+import pickle
 from typing import Sequence
 from re import I, S, match, findall
 from pickle import load, dump
 from networkx import Graph, shortest_path_length
 from networkx.algorithms.traversal.breadth_first_search import descendants_at_distance
+from itertools import combinations
 
 def check_multi(qasm_line):
 	"""
@@ -26,8 +28,7 @@ def check_multi(qasm_line):
 def add_logical_edge(
 	physical_graph : Graph, 
 	hybrid_graph : Graph, 
-	a : int, 
-	b : int, 
+	logical_edge : tuple[int,int,int],
 	options : dict[str]
 	) -> Graph | None:
 	"""
@@ -38,9 +39,7 @@ def add_logical_edge(
 
 		hybrid_graph (Graph): Graph of the hybrid topology.
 
-		a (int): Primary vertex of edge.
-
-		b (int): Secondary vertex of edge.
+		logical_edge (tuple[int]): A weighted logical edge.		
 
 		options (dict[str]): 
 			block_size (int): Defines the size of qudit groups
@@ -49,8 +48,9 @@ def add_logical_edge(
 		updated_graph (Graph): Return the new hybird_graph.
 	"""
 	worst_dist = physical_graph.number_of_nodes()
-	# TODO: edge_weight key may be wrong
-	if shortest_path_length(hybrid_graph, a, b, weight="edge_weight"
+	a = logical_edge[0]
+	b = logical_edge[1]
+	if shortest_path_length(physical_graph, a, b, weight="edge_weight"
 		) > options["block_size"]-1:
 		# Find all vertices that are blocksize-1 away from A
 		candidates = descendants_at_distance(hybrid_graph, a, 
@@ -68,7 +68,7 @@ def add_logical_edge(
 
 
 def get_hybrid_edge_set(
-	qasm_file : str, 
+	circuit_file : str, 
 	coupling_file : str,
 	options : dict[str]
 ) -> set[tuple[int]] | None:
@@ -77,12 +77,13 @@ def get_hybrid_edge_set(
 	logical edges are added for unperformable gates.
 
 	Args:
-		qasm_file (str): Path to the qasm file specifying the circuit.
+		circuit_file (str): Path to the file specifying the circuit.
 
 		coupling_file (str): Path to the coupling map specifying the topology.
 
 		options (dict[str]): 
 			block_size (int): Defines the size of qudit groups
+			is_qasm (bool): Whether the circuit_file is qasm or pickle.
 
 	Returns:
 		hybrid_edge_set (set[tuple[int]]): The physical topology with logical
@@ -101,35 +102,49 @@ def get_hybrid_edge_set(
 	# Convert the physical topology to a networkx graph
 	hybrid_graph = Graph()
 	physical_graph = Graph()
-	hybrid_graph.add_edges_from(list(physical_edge_set))
+	hybrid_graph.add_weighted_edges_from(list(physical_edge_set))
 	physical_graph.add_weighted_edges_from(list(physical_edge_set))
 
 	# Get the logical connectivity graph
 	logical_edge_list = []
-	with open(qasm_file, 'r') as f:
-		for qasm_line in f:
-			if (edge := check_multi(qasm_line)) is not None:
-				logical_edge_list.append(edge)
+	if options['is_qasm']:
+		with open(circuit_file, 'r') as f:
+			for qasm_line in f:
+				if (edge := check_multi(qasm_line)) is not None:
+					weight = shortest_path_length(
+						physical_graph, edge[0], edge[1])
+					if weight > 1:
+						logical_edge_list.append((edge[0], edge[1], weight))
+	else:
+		with open(circuit_file, 'rb') as f:
+			circuit = pickle.load(f)
+		for op in circuit:
+			if len(op.location) > 1:
+				for edge in combinations(op.location, 2):
+					weight = shortest_path_length(
+						physical_graph, edge[0], edge[1])
+					if weight > 1:
+						logical_edge_list.append((edge[0], edge[1], weight))
+			
 
 	# Add logical edges in order of path length
 	for edge in logical_edge_list:
-		rev_edge = (edge[1], edge[0])
+		rev_edge = (edge[1], edge[0], edge[2])
 		if rev_edge in logical_edge_list:
 			logical_edge_list.remove(rev_edge)
-	logical_edge_list = list(set(logical_edge_list))
-	sorted(logical_edge_list, 
-		key=lambda x: shortest_path_length(physical_graph, x[0], x[1])
-	)
+			logical_edge_list.append(edge)
+	#logical_edge_list = list(set(logical_edge_list))
+	logical_edge_list = sorted(logical_edge_list, key=lambda x: x[2])
 
 	for logical_edge in logical_edge_list:
 		hybrid_graph = add_logical_edge(
 			physical_graph, 
 			hybrid_graph, 
-			logical_edge[0],
-			logical_edge[1],
+			logical_edge,
 			options
 		)
 	return set([edge for edge in hybrid_graph.edges])
+
 
 def save_hybrid_topology(
 	hybrid_graph : Sequence[Sequence[int]],
@@ -140,8 +155,21 @@ def save_hybrid_topology(
 	circ = qasm_file.split('qasm/')[-1].split('.qasm')[0]
 	coup = coupling_file.split('coupling_maps/')[-1]
 	size = str(options["block_size"])
-	new_name = "hybrid_" + circ + "_" + coup + "_blocksize_" + size
-	new_name += "_weighted"
+	new_name = circ + "_" + coup + "_blocksize_" + size
 	
-	with open('coupling_maps/' + new_name, 'wb') as f:
+	with open('subtopology_files/' + new_name, 'wb') as f:
 		dump(hybrid_graph, f)
+
+
+def load_hybrid_topology(
+	qasm_file : str,
+	coupling_file : str,
+	options : dict[str]
+) -> Sequence[Sequence[int]]:
+	circ = qasm_file.split('qasm/')[-1].split('.qasm')[0]
+	coup = coupling_file.split('coupling_maps/')[-1]
+	size = str(options["block_size"])
+	new_name = circ + "_" + coup + "_blocksize_" + size
+	
+	with open('subtopology_files/' + new_name, 'rb') as f:
+		return load(f)

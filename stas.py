@@ -1,7 +1,9 @@
 from __future__ import annotations
 from sys import path
+from typing import Any
 
 from bqskit.ir.circuit import Circuit
+from bqskit.ir.region import CircuitRegion
 path.append("../bqskit")
 
 from bqskit.compiler.passes.synthesis.leap import LEAPSynthesisPass
@@ -21,8 +23,9 @@ logging.getLogger('bqskit').setLevel(logging.DEBUG)
 
 from mapping import do_layout, do_routing, find_num_qudits
 from mapping import dummy_layout, dummy_routing, find_num_qudits
-from hybrid_topology import get_hybrid_edge_set, load_hybrid_topology, save_hybrid_topology
+from weighted_topology import get_hybrid_edge_set, load_hybrid_topology, save_hybrid_topology
 from intermediate_results import check_for_synthesis_results, find_block_errors
+from util import get_block
 
 from math import ceil, sqrt
 from os.path import exists
@@ -52,13 +55,12 @@ if __name__ == '__main__':
 		num_q = find_num_qudits(qasm_file)
 		num_p_sqrt = ceil(sqrt(num_q))
 		coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
-		#coupling_map = "coupling_maps/alltoall_5"
+		checkpoint_as_qasm = False
 
 		options = {
 			"block_size"	 : args.block_size,
-			"reuse_edges"	: args.reuse_edges,
 			"shortest_path"  : args.shortest_path,
-			"add_interactors": args.add_interactors
+			"is_qasm" : checkpoint_as_qasm
 		}
 		instantiate_options = {
 			'min_iters': 0,
@@ -99,6 +101,7 @@ if __name__ == '__main__':
 
 		if not exists(checkpoint_dir):
 			mkdir(checkpoint_dir)
+		
 		#endregion
 
 		# Layout
@@ -110,8 +113,8 @@ if __name__ == '__main__':
 			print("Found existing file for %s, skipping layout" 
 				%(layout_qasm_file))
 		else:
-			#do_layout(qasm_file, coupling_map, layout_qasm_file)
-			dummy_layout(qasm_file, coupling_map, layout_qasm_file)
+			do_layout(qasm_file, coupling_map, layout_qasm_file)
+			#dummy_layout(qasm_file, coupling_map, layout_qasm_file)
 		#endregion
 
 		# Partitioning on logical topology
@@ -126,13 +129,18 @@ if __name__ == '__main__':
 		else:
 			with open(layout_qasm_file, 'r') as f:
 				circuit = OPENQASM2Language().decode(f.read())
+			og_circ = circuit.copy()
 			ScanPartitioner(args.block_size).run(circuit, {})
 			proj_name = target_name + "_blocksize_" + str(args.block_size)
-			SaveIntermediatePass("block_files/", proj_name).run(circuit, {})
+			SaveIntermediatePass(
+				"block_files/", 
+				proj_name, 
+				checkpoint_as_qasm
+			).run(circuit, {})
 		block_files = sorted(listdir(partition_dir))
 		if circuit is not None:
 			# All blocks + the structure.pickle file
-			if len(block_files) + 1 != circuit.get_num_operations():
+			if len(block_files) - 1 != circuit.get_num_operations():
 				print(f"ERROR: Number of saved blocks in block_files/{target_name} "
 					"do not match the number of partitions in circuit")
 		for bf in block_files:
@@ -169,30 +177,32 @@ if __name__ == '__main__':
 			synthesizer = LEAPSynthesisPass(
 				layer_generator=layer_generator,
 				instantiate_options=instantiate_options,
-				checkpoint_dir=checkpoint_dir
+				#checkpoint_dir=checkpoint_dir
 			)
 			with open(f"{partition_dir}/structure.pickle", "rb") as f:
 				structure = pickle.load(f)
 			for block_num in range(len(block_files)):
-				block_file = block_files[block_num]
-				subtopology_path = f"{target_name}/{block_file}"
+				block_path = f"{partition_dir}/{block_files[block_num]}"
+				subtopology_path = f"{target_name}/{block_files[block_num]}"
 				subtopology = load_hybrid_topology(subtopology_path, coupling_map, options)
-				block_path = f"{partition_dir}/{block_file}"
-				with open(block_path, "r") as f:
-					subcircuit = OPENQASM2Language().decode(f.read())
+				subcircuit = get_block(block_path, options)
+				region = CircuitRegion({q: (0, subcircuit.get_depth() - 1) 
+					for q in range(subcircuit.get_size())})
+				subcircuit.fold(region)
 				machine = MachineModel(circuit.get_size(), subtopology)
 				data = {"machine_model": machine}
 				print(f"  Synthesizing block {block_num}/{len(block_files)-1}")
 				synthesizer.run(subcircuit, data)
 				synthesized_circuit.append_circuit(subcircuit, structure[block_num])
 			# Clean up synthesized qasm
-			UnfoldPass().run(synthesized_circuit, data)
-			VariableToU3Pass().run(synthesized_circuit, data)
+			UnfoldPass().run(synthesized_circuit, {})
+			VariableToU3Pass().run(synthesized_circuit, {})
 			with open(synthesized_qasm_file, 'w') as f:
 				f.write(OPENQASM2Language().encode(synthesized_circuit))
 			#endregion
 
 			# Routing
+			#region routing
 			print("="*80)
 			print("Doing Routing for %s..." %(synthesized_qasm_file))
 			print("="*80)
@@ -200,6 +210,6 @@ if __name__ == '__main__':
 				print("Found existing file for %s, skipping routing" 
 					%(mapped_qasm_file))
 			else:
-				#do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
-				dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
-
+				do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+				#dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+			#endregion
