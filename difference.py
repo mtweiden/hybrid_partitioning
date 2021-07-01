@@ -3,14 +3,15 @@ from bqskit.compiler.passes.util.intermediate import RestoreIntermediatePass
 from bqskit import Circuit
 import pickle
 
-filename = "mult_8"
+filename = "qft_5"
 coupling = "mesh_3_3"
-blocksize = "blocksize_5"
+blocksize = "blocksize_3"
+suffix = "shortestdirect"
 num_q = 9
-
-layoutname = f"layout_qasm/{filename}_{coupling}"
-synthname  = f"synthesized_qasm/{filename}_{coupling}_{blocksize}"
-mappedname = f"mapped_qasm/{filename}_{coupling}_{blocksize}"
+name = f"{filename}_{coupling}_{blocksize}_{suffix}"
+layoutname = f"layout_qasm/{name}"
+synthname  = f"synthesized_qasm/{name}"
+mappedname = f"mapped_qasm/{name}"
 with open(layoutname, 'r') as f:
     layout = OPENQASM2Language().decode(f.read())
 with open(synthname, 'r') as f:
@@ -27,7 +28,7 @@ print("Distance b/w layout and synth: ", layout_unitary.get_distance_from(synth_
 print("Distance b/w layout and mapp: ", layout_unitary.get_distance_from(mapp_unitary))
 print("Distance b/w mapp and synth: ", synth_unitary.get_distance_from(mapp_unitary))
 
-structure_path = f"block_files/{filename}_{coupling}_{blocksize}/structure.pickle"
+structure_path = f"block_files/{name}/structure.pickle"
 with open(structure_path, "rb") as f:
     structure = pickle.load(f)
 print(structure)
