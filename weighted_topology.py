@@ -12,13 +12,12 @@ from pickle import load, dump
 from networkx import Graph, shortest_path_length
 import networkx
 from networkx.algorithms.shortest_paths.generic import shortest_path
-from networkx.algorithms.traversal.breadth_first_search import descendants_at_distance
 from itertools import combinations
 from bqskit import Circuit
+from collections import Counter
 
-from networkx.classes.function import neighbors, subgraph
 
-def check_multi(qasm_line):
+def check_multi(qasm_line) -> tuple[int] | None:
 	"""
 	Determine if a line of QASM code is a multi-qubit interaction. If it is, 
 	return a tuple of ints (control, target).
@@ -31,9 +30,18 @@ def check_multi(qasm_line):
 		return None
 
 
+def is_same(a : Sequence[int], b : Sequence[int]) -> bool:
+	"""True if edges are equivalent."""
+	if (a[0], a[1]) == (b[0], b[1]) or (a[1], a[0]) == (b[0], b[1]):
+		return True
+	else:
+		return False
+
+
 def get_logical_operations(
 	circuit: Circuit,
 	qudit_group: Sequence[int] | None = None,
+	undirected : bool = True
 ) -> Sequence[Sequence[int]]:
 	logical_operations = []
 	for op in circuit:
@@ -43,6 +51,14 @@ def get_logical_operations(
 	if qudit_group is not None:
 		logical_operations = [(qudit_group[op[0]], qudit_group[op[1]]) 
 			for op in logical_operations]
+
+	if undirected:
+		for edge in logical_operations:
+			rev_edge = (edge[1], edge[0])
+			if rev_edge in logical_operations:
+				logical_operations.remove(rev_edge)
+				logical_operations.append(edge)
+
 	return logical_operations
 
 
@@ -67,8 +83,8 @@ def get_unpartitionable_edges(
 	Gates that require a logical edge to be inserted into the hybrid topology.
 	"""
 	return [
-		edge for edge in logical_operations if not 
-		is_partitionable(physical_topology, qudit_group, edge)
+		(u,v) for (u,v) in logical_operations if not 
+		is_partitionable(physical_topology, qudit_group, (u,v))
 	]
 
 
@@ -110,15 +126,54 @@ def estimate_cnot_count(
 	hybrid_topology : Graph,
 	qudit_group : Sequence[int] | None = None,
 ) -> int:
+	graph = hybrid_topology if qudit_group is None else \
+		hybrid_topology.subgraph(qudit_group)
 	est = 0
-	if qudit_group is None:
-		for (u,v) in operations:
-			est += shortest_path_length(hybrid_topology, u, v) + 1
-	else:
-		subgraph = hybrid_topology.subgraph(qudit_group)
-		for (u,v) in operations:
-			est += shortest_path_length(subgraph, u, v, weight="weight") + 1
+	for op in operations:
+		dist = shortest_path_length(graph, op[0], op[1], weight="weight")
+		est += 6 * (dist - 1) + 1
 	return est
+
+
+def collect_stats(
+    circuit : Circuit,
+    physical_graph : Graph, 
+    hybrid_graph : Graph,
+    qudit_group : Sequence[int],
+    blocksize : int | None = None
+) -> str:
+    # NOTE: may break if idle qudit are removed
+    blocksize = len(qudit_group) if blocksize is None else blocksize
+    logical_ops = get_logical_operations(circuit, qudit_group)
+
+    physical = get_physical_edges(logical_ops, physical_graph)
+    partitionable = get_partitionable_edges(logical_ops,
+        physical_graph, qudit_group)
+    unpartitionable = get_unpartitionable_edges(logical_ops,
+        physical_graph, qudit_group)
+
+    physical_cost = estimate_cnot_count(physical, hybrid_graph)
+    partitionable_cost = estimate_cnot_count(partitionable, hybrid_graph, 
+        qudit_group)
+    unpartitionable_cost = estimate_cnot_count(unpartitionable, hybrid_graph, 
+        qudit_group)
+    total_cost = sum([physical_cost, partitionable_cost, unpartitionable_cost])
+    stats = (
+		f"INFO -\n"
+		f"  blocksize: {blocksize}\n"
+        f"  block: {qudit_group}\n"
+		f"OPERATION COUNTS -\n"
+        f"  total operations: {len(logical_ops)}\n"
+        f"    physical ops       : {len(physical)}\n"
+        f"    partitionable ops  : {len(partitionable)}\n"
+        f"    unpartitionable ops: {len(unpartitionable)}\n"
+		f"COST ESTIMATES -\n"
+        f"  total block CNOTs: {total_cost}\n"
+        f"    physical CNOTs       : {physical_cost}\n"
+        f"    partitionable CNOTs  : {partitionable_cost}\n"
+        f"    unpartitionable CNOTs: {unpartitionable_cost}\n"
+    )
+    return stats
 
 
 def cost_function(distance: int) -> int:
@@ -139,14 +194,16 @@ def cost_function(distance: int) -> int:
 	# Number of CNOTs needed to get Qubits in range for CNOT and SWAP back
 	#return 3 * 2 * (distance - 1)
 	# Number of CNOTs needed to SWAP
-	return 3 * 2 * (distance)
+	#return 3 * 2 * (distance)
+	# Just the distance
+	return distance
 
 
 def add_logical_edges(
+	logical_operations : Sequence[Sequence[int]],
+	qudit_group : Sequence[int],
 	physical_topology : Graph,
 	hybrid_topology : Graph,
-	qudit_group : Sequence[int],
-	logical_edge_list : Sequence[Sequence[int]],
 	options : dict[str],
 ) -> Graph:
 	"""
@@ -182,13 +239,14 @@ def add_logical_edges(
 		updated_graph (Graph): Return the new hybird_graph.
 	"""
 	hybrid_graph = hybrid_topology.copy()
-	unpartitionable_edges = get_unpartitionable_edges(logical_edge_list, 
+	unpartitionable_edges = get_unpartitionable_edges(logical_operations, 
 		physical_topology, qudit_group)
+	
 	if options["nearest_physical"]:
 		# Shortest path between vertices physically connected to vertex_a and
 		# vertices physically connected to vertex_b
 		subgraph = physical_topology.subgraph(qudit_group)
-		for (vertex_a, vertex_b, _) in unpartitionable_edges:
+		for (vertex_a, vertex_b) in unpartitionable_edges:
 			candidates_a = list(shortest_path(subgraph, vertex_a).keys())
 			candidates_b = list(shortest_path(subgraph, vertex_b).keys())
 			best_dist = physical_topology.number_of_nodes()
@@ -216,7 +274,7 @@ def add_logical_edges(
 			unreachable = list(set(qudit_group) - set(reachable))
 			best_qudit = qudit_group[0]
 			best_other = unreachable[0]
-			for qudit in qudit_group:
+			for qudit in reachable:
 				for other in unreachable:
 					dist = shortest_path_length(physical_topology, qudit, other)
 					if dist < best_dist and dist > 0:
@@ -225,22 +283,24 @@ def add_logical_edges(
 						best_other = other
 			hybrid_graph.add_edge(best_qudit, best_other, 
 				weight=cost_function(best_dist))
+			subgraph = hybrid_graph.subgraph(qudit_group)
 			reachable = list(shortest_path(subgraph, qudit_group[0]).keys())
 
 	else: # shortest_direct assumed
-		for (vertex_a, vertex_b, distance) in unpartitionable_edges:
+		for (vertex_a, vertex_b) in unpartitionable_edges:
+			dist = shortest_path_length(physical_topology, vertex_a, vertex_b)
 			hybrid_graph.add_edge(vertex_a, vertex_b, 
-				weight=cost_function(distance))
+				weight=cost_function(dist))
 
 	return hybrid_graph
 
 
-def get_hybrid_edge_set(
+def get_hybrid_topology(
 	circuit_file : str, 
 	coupling_file : str,
 	qudit_group : Sequence[int],
 	options : dict[str],
-) -> set[tuple[int]] | None:
+) -> Graph | None:
 	"""
 	Given a qasm file and a physical topology, produce a hybrid topology where
 	logical edges are added for unperformable gates.
@@ -292,56 +352,23 @@ def get_hybrid_edge_set(
 		with open(circuit_file, 'rb') as f:
 			circuit = pickle.load(f)
 		logical_operations = get_logical_operations(circuit, qudit_group)
-			
-	# Sort logical edges by edge frequency
-	# TODO: Sort logical edges in order of path length
-	for edge in logical_operations:
-		rev_edge = (edge[1], edge[0])
-		if rev_edge in logical_operations:
-			logical_operations.remove(rev_edge)
-			logical_operations.append(edge)
-	logical_operations = sorted(logical_operations,
-		key=logical_operations.count, reverse=True)
-	logical_operations = list(OrderedDict.fromkeys(logical_operations))
-	logical_edge_list = [
-		(e[0], e[1], shortest_path_length(physical_graph, e[0], e[1])) for
-			e in logical_operations
-	]
 
 	# Add edges to graph
 	hybrid_graph = add_logical_edges(
+		logical_operations,
+		qudit_group,
 		physical_graph,
 		hybrid_graph,
-		qudit_group,
-		logical_edge_list,
 		options
 	)
 	hybrid_graph.add_weighted_edges_from(physical_edge_set)
 
-	hybrid_edge_set = set([
-		(u,v, hybrid_graph[u][v]["weight"]) for (u,v) in hybrid_graph.edges
-	])
-	physical = get_physical_edges(logical_operations, physical_graph)
-	partitionable = get_partitionable_edges(logical_operations,
-		physical_graph, qudit_group)
-	unpartitionable = get_unpartitionable_edges(logical_operations,
-		physical_graph, qudit_group)
+	print(collect_stats(circuit, physical_graph, hybrid_graph, qudit_group))
+	return hybrid_graph
 
-	physical_cost = estimate_cnot_count(physical, hybrid_graph)
-	partitionable_cost = estimate_cnot_count(partitionable, hybrid_graph, 
-		qudit_group)
-	unpartitionable_cost = estimate_cnot_count(unpartitionable, hybrid_graph, 
-		qudit_group)
-	total_cost = sum([physical_cost, partitionable_cost, unpartitionable_cost])
-
-	print(f"Qudit group: {qudit_group}")
-	print(f"  Number of physical operations: {len(physical)}")
-	print(f"    Estimated physical CNOT count: {physical_cost}")
-	print(f"  Number of partitionable operations: {len(partitionable)}")
-	print(f"    Estimated partitionable CNOT count: {partitionable_cost}")
-	print(f"  Number of unpartitionable operations: {len(unpartitionable)}")
-	print(f"    Estimated unpartitionable CNOT count: {unpartitionable_cost}")
-	print(f"  Estimated total CNOT count: {total_cost}")
-	print()
-	return hybrid_edge_set
+	#hybrid_edge_set = set([
+	#	(u,v, hybrid_graph[u][v]["weight"]) for (u,v) in hybrid_graph.edges
+	#])
+	#from pprint import pprint
+	#pprint(dict(Counter(logical_operations)))
 

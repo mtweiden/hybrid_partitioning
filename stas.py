@@ -23,7 +23,7 @@ logging.getLogger('bqskit').setLevel(logging.DEBUG)
 
 from mapping import do_layout, do_routing, find_num_qudits
 from mapping import dummy_layout, dummy_routing, find_num_qudits
-from weighted_topology import get_hybrid_edge_set, get_logical_operations
+from weighted_topology import get_hybrid_topology, get_logical_operations
 from intermediate_results import check_for_synthesis_results, find_block_errors
 from util import careful_fold, load_block_circuit, load_block_topology, load_circuit_structure, save_block_topology
 
@@ -169,14 +169,16 @@ if __name__ == '__main__':
 		for block_num in range(len(block_files)):
 			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{partition_dir}/{block_files[block_num]}"
-			subtopology = get_hybrid_edge_set(
+			subtopology = get_hybrid_topology(
 				block_path, 
 				coupling_map, 
 				structure[block_num],
 				options
 			)
-			subtopology_path = \
-				f"{subtopology_dir}/{block_names[block_num]}_subtopology.pickle"
+			subtopology_path = (
+				f"{subtopology_dir}/{block_names[block_num]}"
+				f"_subtopology.pickle"
+			)
 			save_block_topology(subtopology, subtopology_path)
 		#endregion
 
