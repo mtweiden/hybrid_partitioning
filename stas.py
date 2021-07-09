@@ -1,18 +1,11 @@
 from __future__ import annotations
 from old_codebase import call_old_codebase_leap, check_for_leap_files, parse_leap_files
-from sys import path
-from typing import Any
 
 from bqskit.ir.circuit import Circuit
-
-from bqskit.compiler.search.generators.simple import SimpleLayerGenerator
 
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
-from bqskit.compiler.passes.util.unfold import UnfoldPass
-from bqskit.compiler.passes.util.converttou3 import VariableToU3Pass
-from bqskit.compiler.passes.util.converttou3 import PauliToU3Pass
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 # Enable logging
