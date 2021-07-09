@@ -1,4 +1,4 @@
-rm layout_qasm/*
+
 rm synthesized_qasm/*
 rm mapped_qasm/*
 rm -rf synthesis_files/*

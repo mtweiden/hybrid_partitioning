@@ -4,17 +4,16 @@ logical-physical topology.
 """
 
 from __future__ import annotations
-from collections import UserString
 import pickle
-from typing import OrderedDict, Sequence
+from typing import Sequence
 from re import match, findall
-from pickle import load, dump
+from pickle import load
 from networkx import Graph, shortest_path_length
 import networkx
 from networkx.algorithms.shortest_paths.generic import shortest_path
 from itertools import combinations
 from bqskit import Circuit
-from collections import Counter
+from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
 
 
 def check_multi(qasm_line) -> tuple[int] | None:
@@ -126,13 +125,65 @@ def estimate_cnot_count(
 	hybrid_topology : Graph,
 	qudit_group : Sequence[int] | None = None,
 ) -> int:
-	graph = hybrid_topology if qudit_group is None else \
+	graph = hybrid_topology.copy() if qudit_group is None else \
 		hybrid_topology.subgraph(qudit_group)
-	est = 0
+	relabeled_hybrid = hybrid_topology.copy()
+	estimate = 0
 	for op in operations:
 		dist = shortest_path_length(graph, op[0], op[1], weight="weight")
-		est += 6 * (dist - 1) + 1
-	return est
+		cost = 3 * (dist - 1) + 1 
+		# Do relabeling for unpartitionable gates
+		if cost > 1:
+			### OPTION A: actually changed physical topology
+			## See if logical edge exists
+			#if graph.has_edge(op[0], op[1]):
+			#	(u,v) = (op[0], op[1])
+			#elif graph.has_edge(op[1], op[0]):
+			#	(u,v) = (op[1], op[0])
+			#else:
+			#	estimate += cost
+			#	continue
+			#best_open = hybrid_topology.number_of_nodes()
+			#best_dist = best_open
+			#best_inner = qudit_group[0]
+			## Find best "open seat"
+			#u_open = [x for x in neighbors(graph, u) if x not in qudit_group]
+			#if len(u_open) == 0:
+			#	u_open = [x for x in qudit_group if x != u and x != v]
+			#for x in u_open:
+			#	new_dist = shortest_path_length(relabeled_hybrid, v, x, 
+			#		weight="weight")
+			#	if new_dist < best_dist and new_dist > 0:
+			#		best_dist = new_dist
+			#		best_open = x
+			#		best_inner = v
+
+			#v_open = [x for x in neighbors(graph, v) if x not in qudit_group]
+			#if len(v_open) == 0:
+			#	v_open = [x for x in qudit_group if x != u and x != v]
+			#for x in v_open:
+			#	new_dist = shortest_path_length(relabeled_hybrid, u, x, 
+			#		weight="weight")
+			#	if new_dist < best_dist and new_dist > 0:
+			#		best_dist = new_dist
+			#		best_open = x
+			#		best_inner = u
+			#cost = 3 * (best_dist - 1) + 1
+			#relabeling = {best_inner: best_open, best_open: best_inner}
+			#relabeled_hybrid = relabel_nodes(relabeled_hybrid, relabeling)
+			#graph = relabeled_hybrid.subgraph(qudit_group)
+
+			### OPTION B: if logical edges are reused, assume they've been
+			### 	changed to physical edges by SWAPs
+			###	*May result in underestimates for blocks with many unparti-
+			###  tionable gates
+			if graph.has_edge(op[0], op[1]):
+				graph[op[0]][op[1]]["weight"] = 1
+			elif graph.has_edge(op[1], op[0]):
+				graph[op[1]][op[0]]["weight"] = 1
+
+		estimate += cost
+	return estimate
 
 
 def collect_stats(
@@ -140,8 +191,8 @@ def collect_stats(
     physical_graph : Graph, 
     hybrid_graph : Graph,
     qudit_group : Sequence[int],
-    blocksize : int | None = None
-) -> str:
+    blocksize : int | None = None,
+) -> str | tuple[str, int]:
     # NOTE: may break if idle qudit are removed
     blocksize = len(qudit_group) if blocksize is None else blocksize
     logical_ops = get_logical_operations(circuit, qudit_group)
@@ -173,7 +224,7 @@ def collect_stats(
         f"    partitionable CNOTs  : {partitionable_cost}\n"
         f"    unpartitionable CNOTs: {unpartitionable_cost}\n"
     )
-    return stats
+    return (stats, total_cost)
 
 
 def cost_function(distance: int) -> int:
@@ -344,14 +395,12 @@ def get_hybrid_topology(
 	# QASM format
 	if options['is_qasm']:
 		with open(circuit_file, 'r') as f:
-			for qasm_line in f:
-				if (edge := check_multi(qasm_line)) is not None:
-					logical_operations.append(edge)
+			circuit = OPENQASM2Language().decode(f.read())
 	# Pickle format
 	else:
 		with open(circuit_file, 'rb') as f:
 			circuit = pickle.load(f)
-		logical_operations = get_logical_operations(circuit, qudit_group)
+	logical_operations = get_logical_operations(circuit, qudit_group)
 
 	# Add edges to graph
 	hybrid_graph = add_logical_edges(
@@ -363,12 +412,8 @@ def get_hybrid_topology(
 	)
 	hybrid_graph.add_weighted_edges_from(physical_edge_set)
 
-	print(collect_stats(circuit, physical_graph, hybrid_graph, qudit_group))
+	(stats_str, total_cx) = collect_stats(circuit, physical_graph, 
+		hybrid_graph, qudit_group)
+	print(stats_str)
+	options["estimated_cnots"] += total_cx
 	return hybrid_graph
-
-	#hybrid_edge_set = set([
-	#	(u,v, hybrid_graph[u][v]["weight"]) for (u,v) in hybrid_graph.edges
-	#])
-	#from pprint import pprint
-	#pprint(dict(Counter(logical_operations)))
-

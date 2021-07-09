@@ -6,6 +6,7 @@ from bqskit import Circuit
 from bqskit.ir.gates.circuitgate import CircuitGate
 from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
 from bqskit.ir.region import CircuitRegion, CircuitRegionLike
+from networkx.classes.graph import Graph
 
 def load_block_circuit(
 	block_path : str,
@@ -21,17 +22,17 @@ def load_block_circuit(
 
 def load_block_topology(
 	block_path : str,
-) -> Sequence[Sequence[int]]:
+) -> Graph:
 	with open(block_path, "rb") as f:
 		return pickle.load(f)
 
 
 def save_block_topology(
-	subtopology_edge_set: Sequence[Sequence[int]],
+	subtopology: Graph,
 	block_path : str,
 ) -> None:
 	with open(block_path, 'wb') as f:
-		pickle.dump(subtopology_edge_set, f)
+		pickle.dump(subtopology, f)
 
 
 def load_circuit_structure(
