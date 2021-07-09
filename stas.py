@@ -1,13 +1,11 @@
 from __future__ import annotations
+from old_codebase import call_old_codebase_leap, check_for_leap_files, parse_leap_files
 from sys import path
 from typing import Any
 
 from bqskit.ir.circuit import Circuit
 
-from bqskit.compiler.passes.synthesis.leap import LEAPSynthesisPass
-from bqskit.compiler.passes.synthesis.qfast import QFASTDecompositionPass
 from bqskit.compiler.search.generators.simple import SimpleLayerGenerator
-from bqskit.ir.gates.parameterized.unitary import VariableUnitaryGate
 
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
@@ -64,15 +62,6 @@ if __name__ == '__main__':
 			"is_qasm" : checkpoint_as_qasm,
 			"estimated_cnots" : 0,
 		}
-		instantiate_options = {
-			'min_iters': 0,
-			'diff_tol_r': 1e-5,
-			'dist_tol': 1e-11,
-			'max_iters': 2500,
-		}
-		layer_generator = SimpleLayerGenerator(
-			single_qudit_gate_1=VariableUnitaryGate(1),
-		)
 
 		edge_opts = [args.nearest_logical, args.nearest_physical, 
 			args.shortest_direct]
@@ -194,42 +183,45 @@ if __name__ == '__main__':
 			print("="*80)
 		else:
 			synthesized_circuit = Circuit(num_p_sqrt**2)
-			#synthesizer = LEAPSynthesisPass(
-			#	layer_generator=layer_generator,
-			#	instantiate_options=instantiate_options,
-			#	#checkpoint_dir=checkpoint_dir
-			#)
 			structure = load_circuit_structure(partition_dir)
 			for block_num in range(len(block_files)):
-				# Load subtopology
-				subtopology_path = (
-					f"{subtopology_dir}/{block_names[block_num]}"
-					f"_subtopology.pickle"
-				)
-				weighted_topology = load_block_topology(subtopology_path)
-				subtopology = weighted_topology.subgraph(structure[block_num])
-				# Get rid of weights for now
-				# TODO: Add weighted edges to synthesis
-				sub_edges = [(e[0], e[1]) for e in subtopology.edges]
-				# Load circuit
-				block_path = f"{partition_dir}/{block_files[block_num]}"
-				subcircuit = load_block_circuit(block_path, options)
-				unitary = subcircuit.get_unitary().get_numpy()
-				subcircuit_qasm = OPENQASM2Language().encode(subcircuit)
-				# Setup machine model
-				print(f"  Synthesizing block {block_num}/{len(block_files)-1}")
-				# Synthesize
-				subcircuit_qasm = call_old_codebase_leap(
-					unitary,
-					list()
-				)
-				# Add to circuit
-				synthesized_circuit.append_circuit(subcircuit, 
-					structure[block_num])
+				qudit_group = structure[block_num]
+				# Get subcircuit QASM by loading checkpoint or by synthesis
+				if check_for_leap_files(target_name+f"_block_{block_num}"):
+					subcircuit_qasm = parse_leap_files(
+						target_name + f"_block_{block_num}",
+					)
+				else:
+					# Load subtopology
+					subtopology_path = (
+						f"{subtopology_dir}/{block_names[block_num]}"
+						f"_subtopology.pickle"
+					)
+					weighted_topology = load_block_topology(subtopology_path)
+					subtopology = weighted_topology.subgraph(qudit_group)
+					# Get rid of weights for now
+					# TODO: Add weighted edges to synthesis function
+					q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
+					sub_edges = [(q_map[e[0]], q_map[e[1]]) for e in subtopology.edges]
+					# Load circuit
+					block_path = f"{partition_dir}/{block_files[block_num]}"
+					subcircuit = load_block_circuit(block_path, options)
+					unitary = subcircuit.get_unitary().get_numpy()
+					print(f"  Synthesizing block {block_num}/{len(block_files)-1}")
+					# Synthesize
+					subcircuit_qasm = call_old_codebase_leap(
+						unitary,
+						sub_edges,
+						target_name + f"_block_{block_num}",
+					)
+					with open(checkpoint_dir+f"_block_{block_num}.qasm", "w") as f:
+						f.write(subcircuit_qasm)
+
+				# Format QASM as subcircuit & add to circuit
+				subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+				synthesized_circuit.append_circuit(subcircuit, qudit_group)
+
 			# Clean up synthesized qasm
-			UnfoldPass().run(synthesized_circuit, {})
-			VariableToU3Pass().run(synthesized_circuit, {})
-			PauliToU3Pass().run(synthesized_circuit, {})
 			with open(synthesized_qasm_file, 'w') as f:
 				f.write(OPENQASM2Language().encode(synthesized_circuit))
 			#endregion
