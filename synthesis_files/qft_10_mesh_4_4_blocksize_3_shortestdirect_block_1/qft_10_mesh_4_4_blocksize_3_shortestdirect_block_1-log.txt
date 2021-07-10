@@ -1,0 +1,27 @@
+2021-07-10 09:54:30.491166 > 	There are 16 processors available to Pool.
+2021-07-10 09:54:30.491459 > 	The branching factor is 2.
+2021-07-10 09:54:30.491594 > 	The beam factor is 8.
+2021-07-10 09:54:30.494681 > 	New best! 0.008030756611258849 at depth 0
+2021-07-10 09:54:30.496091 > 	Popped a node with score: 0.008030756611258849 at depth: 0
+2021-07-10 09:54:30.526050 > 	Layer completed after 0.029596855999999505 seconds
+2021-07-10 09:54:30.526618 > 	Popped a node with score: 0.22792137789534372 at depth: 1
+2021-07-10 09:54:30.526728 > 	Popped a node with score: 0.26261857708090386 at depth: 1
+2021-07-10 09:54:30.537327 > 	New best! score: 0.0012045437948309257 at depth: 2
+2021-07-10 09:54:30.576431 > 	Layer completed after 0.049284401999999616 seconds
+2021-07-10 09:54:30.577305 > 	Popped a node with score: 0.0012045437948309257 at depth: 2
+2021-07-10 09:54:30.577422 > 	Popped a node with score: 0.004815273328035996 at depth: 2
+2021-07-10 09:54:30.577541 > 	Popped a node with score: 0.427240959315075 at depth: 2
+2021-07-10 09:54:30.577682 > 	Popped a node with score: 0.4272409955210059 at depth: 2
+2021-07-10 09:54:30.638308 > 	Layer completed after 0.060157841000000545 seconds
+2021-07-10 09:54:30.639809 > 	Popped a node with score: 0.0012045438903748318 at depth: 3
+2021-07-10 09:54:30.639989 > 	Popped a node with score: 0.004815274843805284 at depth: 3
+2021-07-10 09:54:30.640127 > 	Popped a node with score: 0.2269903404637592 at depth: 3
+2021-07-10 09:54:30.640262 > 	Popped a node with score: 0.22699040652429125 at depth: 3
+2021-07-10 09:54:30.640504 > 	Popped a node with score: 0.22699040954708916 at depth: 3
+2021-07-10 09:54:30.640625 > 	Popped a node with score: 0.2590506127088973 at depth: 3
+2021-07-10 09:54:30.640894 > 	Popped a node with score: 0.25905063459408484 at depth: 3
+2021-07-10 09:54:30.641099 > 	Popped a node with score: 0.2590507739018679 at depth: 3
+2021-07-10 09:54:30.678402 > 	New best! score: 0.0 at depth: 4
+2021-07-10 09:54:30.929738 > 	Layer completed after 0.28817985800000034 seconds
+2021-07-10 09:54:30.938558 > 	Finished compilation at depth 4 with score 0.0 after 0.47339037999999967 seconds.
+2021-07-10 09:54:30.940026 > 	Finished all sub-compilations at depth 4 with score 0.0 after 0.47512558000000027 seconds.

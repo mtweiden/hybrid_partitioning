@@ -181,8 +181,9 @@ if __name__ == '__main__':
 				qudit_group = structure[block_num]
 				# Get subcircuit QASM by loading checkpoint or by synthesis
 				if check_for_leap_files(target_name+f"_block_{block_num}"):
+					print(f"  Loading block {block_num+1}/{len(block_files)}")
 					subcircuit_qasm = parse_leap_files(
-						target_name + f"_block_{block_num}",
+						f"{target_name}_block_{block_num}"
 					)
 				else:
 					# Load subtopology
@@ -200,7 +201,7 @@ if __name__ == '__main__':
 					block_path = f"{partition_dir}/{block_files[block_num]}"
 					subcircuit = load_block_circuit(block_path, options)
 					unitary = subcircuit.get_unitary().get_numpy()
-					print(f"  Synthesizing block {block_num}/{len(block_files)-1}")
+					print(f"  Synthesizing block {block_num+1}/{len(block_files)}")
 					# Synthesize
 					subcircuit_qasm = call_old_codebase_leap(
 						unitary,

@@ -1,0 +1,10 @@
+2021-07-10 10:04:06.669375 > 	Started running project qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17
+2021-07-10 10:04:06.669542 > 	qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17	Not started.
+2021-07-10 10:04:06.669769 > 	Starting compilation of qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17
+2021-07-10 10:04:07.787292 > 	Finished compilation of qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17
+2021-07-10 10:04:07.788112 > 	Recorded results from compilation.
+2021-07-10 10:04:07.788362 > 	Deleted checkpoint file.
+2021-07-10 10:04:07.788686 > 	qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17	Complete!
+2021-07-10 10:04:07.788800 > 	Finished running project qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17
+2021-07-10 10:04:07.789140 > 	Started postprocessing of qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17
+2021-07-10 10:04:13.112496 > 	Finished postprocessing of qft_10_mesh_4_4_blocksize_3_shortestdirect_block_17

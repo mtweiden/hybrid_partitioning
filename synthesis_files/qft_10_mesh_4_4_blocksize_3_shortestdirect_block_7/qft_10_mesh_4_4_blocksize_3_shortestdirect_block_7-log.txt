@@ -1,0 +1,30 @@
+2021-07-10 10:03:48.785632 > 	There are 16 processors available to Pool.
+2021-07-10 10:03:48.786015 > 	The branching factor is 3.
+2021-07-10 10:03:48.786188 > 	The beam factor is 5.
+2021-07-10 10:03:48.791730 > 	New best! 0.008031770073481215 at depth 0
+2021-07-10 10:03:48.793552 > 	Popped a node with score: 0.008031770073481215 at depth: 0
+2021-07-10 10:03:48.836602 > 	Layer completed after 0.04279208399999934 seconds
+2021-07-10 10:03:48.837529 > 	Popped a node with score: 0.22792145456462265 at depth: 1
+2021-07-10 10:03:48.837681 > 	Popped a node with score: 0.2626185297645246 at depth: 1
+2021-07-10 10:03:48.837803 > 	Popped a node with score: 0.2971525070825036 at depth: 1
+2021-07-10 10:03:48.851643 > 	New best! score: 0.006014016933127864 at depth: 2
+2021-07-10 10:03:48.854995 > 	New best! score: 0.004815273704489309 at depth: 2
+2021-07-10 10:03:48.856863 > 	New best! score: 0.0012045437948355886 at depth: 2
+2021-07-10 10:03:48.857772 > 	Predicted best value nan for new best with delta nan
+2021-07-10 10:03:49.015140 > 	Layer completed after 0.1770186960000002 seconds
+2021-07-10 10:03:49.016873 > 	Popped a node with score: 0.0012045437948355886 at depth: 2
+2021-07-10 10:03:49.016990 > 	Popped a node with score: 0.004815273704489309 at depth: 2
+2021-07-10 10:03:49.017092 > 	Popped a node with score: 0.006014016933127864 at depth: 2
+2021-07-10 10:03:49.017189 > 	Popped a node with score: 0.427241110972741 at depth: 2
+2021-07-10 10:03:49.017284 > 	Popped a node with score: 0.4272415650032142 at depth: 2
+2021-07-10 10:03:49.235083 > 	Layer completed after 0.21739796099999964 seconds
+2021-07-10 10:03:49.237441 > 	Popped a node with score: 0.0012045439550588677 at depth: 3
+2021-07-10 10:03:49.237580 > 	Popped a node with score: 0.00481527333823073 at depth: 3
+2021-07-10 10:03:49.237683 > 	Popped a node with score: 0.006014016915881104 at depth: 3
+2021-07-10 10:03:49.237919 > 	Popped a node with score: 0.22699033597044194 at depth: 3
+2021-07-10 10:03:49.238016 > 	Popped a node with score: 0.2269903360619373 at depth: 3
+2021-07-10 10:03:49.304007 > 	New best! score: 0.0 at depth: 4
+2021-07-10 10:03:49.306032 > 	Predicted best value nan for new best with delta nan
+2021-07-10 10:03:49.368010 > 	Layer completed after 0.12932209299999986 seconds
+2021-07-10 10:03:49.380249 > 	Finished compilation at depth 4 with score 0.0 after 0.6279407780000001 seconds.
+2021-07-10 10:03:49.382299 > 	Finished all sub-compilations at depth 4 with score 0.0 after 0.6303079460000003 seconds.

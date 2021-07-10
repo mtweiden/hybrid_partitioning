@@ -1,0 +1,29 @@
+2021-07-10 10:03:49.429732 > 	There are 16 processors available to Pool.
+2021-07-10 10:03:49.429963 > 	The branching factor is 2.
+2021-07-10 10:03:49.430078 > 	The beam factor is 8.
+2021-07-10 10:03:49.433073 > 	New best! 3.1472165277768305e-05 at depth 0
+2021-07-10 10:03:49.434416 > 	Popped a node with score: 3.1472165277768305e-05 at depth: 0
+2021-07-10 10:03:49.604998 > 	Layer completed after 0.16995225299999994 seconds
+2021-07-10 10:03:49.605833 > 	Popped a node with score: 0.2885877555424522 at depth: 1
+2021-07-10 10:03:49.605993 > 	Popped a node with score: 0.2907743266110424 at depth: 1
+2021-07-10 10:03:49.615969 > 	New best! score: 1.8824717399001933e-05 at depth: 2
+2021-07-10 10:03:49.619067 > 	New best! score: 4.706190424919043e-06 at depth: 2
+2021-07-10 10:03:49.887795 > 	Layer completed after 0.2811952159999995 seconds
+2021-07-10 10:03:49.889032 > 	Popped a node with score: 4.706190424919043e-06 at depth: 2
+2021-07-10 10:03:49.889236 > 	Popped a node with score: 1.8824717399001933e-05 at depth: 2
+2021-07-10 10:03:49.889412 > 	Popped a node with score: 0.4954507165486508 at depth: 2
+2021-07-10 10:03:49.889567 > 	Popped a node with score: 0.5000070706559032 at depth: 2
+2021-07-10 10:03:49.909335 > 	New best! score: 4.706190423697798e-06 at depth: 3
+2021-07-10 10:03:49.910785 > 	Predicted best value nan for new best with delta nan
+2021-07-10 10:03:50.435327 > 	Layer completed after 0.5454143739999999 seconds
+2021-07-10 10:03:50.436890 > 	Popped a node with score: 4.706190423697798e-06 at depth: 3
+2021-07-10 10:03:50.437099 > 	Popped a node with score: 1.8824720925292304e-05 at depth: 3
+2021-07-10 10:03:50.437283 > 	Popped a node with score: 0.28858435549979433 at depth: 3
+2021-07-10 10:03:50.437397 > 	Popped a node with score: 0.288584427602256 at depth: 3
+2021-07-10 10:03:50.437651 > 	Popped a node with score: 0.28858536127842416 at depth: 3
+2021-07-10 10:03:50.437806 > 	Popped a node with score: 0.2907610750559835 at depth: 3
+2021-07-10 10:03:50.437984 > 	Popped a node with score: 0.2907649403477499 at depth: 3
+2021-07-10 10:03:50.438154 > 	Popped a node with score: 0.29367156823087315 at depth: 3
+2021-07-10 10:03:50.475545 > 	New best! score: 0.0 at depth: 4
+2021-07-10 10:03:50.479241 > 	Predicted best value -2.3530730645648923e-06 for new best with delta -2.3530730645648923e-06
+2021-07-10 10:03:50.489239 > 	Finished all sub-compilations at depth 4 with score 0.0 after 1.083604577 seconds.

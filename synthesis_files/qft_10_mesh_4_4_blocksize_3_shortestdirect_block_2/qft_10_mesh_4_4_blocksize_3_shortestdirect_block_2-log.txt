@@ -1,0 +1,29 @@
+2021-07-10 09:54:30.989019 > 	There are 16 processors available to Pool.
+2021-07-10 09:54:30.989301 > 	The branching factor is 2.
+2021-07-10 09:54:30.989428 > 	The beam factor is 8.
+2021-07-10 09:54:30.991227 > 	New best! 0.03182404448104226 at depth 0
+2021-07-10 09:54:30.992478 > 	Popped a node with score: 0.03182404448104226 at depth: 0
+2021-07-10 09:54:31.011731 > 	Layer completed after 0.018904841999999533 seconds
+2021-07-10 09:54:31.012417 > 	Popped a node with score: 0.17253440686589427 at depth: 1
+2021-07-10 09:54:31.012543 > 	Popped a node with score: 0.24184358457685562 at depth: 1
+2021-07-10 09:54:31.022546 > 	New best! score: 0.004815273867322056 at depth: 2
+2021-07-10 09:54:31.047799 > 	Layer completed after 0.03501413700000011 seconds
+2021-07-10 09:54:31.048814 > 	Popped a node with score: 0.004815273867322056 at depth: 2
+2021-07-10 09:54:31.048941 > 	Popped a node with score: 0.019214720092779025 at depth: 2
+2021-07-10 09:54:31.049088 > 	Popped a node with score: 0.35726668237540027 at depth: 2
+2021-07-10 09:54:31.049203 > 	Popped a node with score: 0.35726686763822946 at depth: 2
+2021-07-10 09:54:31.071175 > 	New best! score: 0.004815273341241877 at depth: 3
+2021-07-10 09:54:31.092173 > 	Layer completed after 0.04269764699999978 seconds
+2021-07-10 09:54:31.093620 > 	Popped a node with score: 0.004815273341241877 at depth: 3
+2021-07-10 09:54:31.093741 > 	Popped a node with score: 0.019214735570371677 at depth: 3
+2021-07-10 09:54:31.093848 > 	Popped a node with score: 0.16853063072400154 at depth: 3
+2021-07-10 09:54:31.093954 > 	Popped a node with score: 0.1685306745182915 at depth: 3
+2021-07-10 09:54:31.094054 > 	Popped a node with score: 0.16853067525181498 at depth: 3
+2021-07-10 09:54:31.094156 > 	Popped a node with score: 0.2269903055017184 at depth: 3
+2021-07-10 09:54:31.094253 > 	Popped a node with score: 0.2269903432696747 at depth: 3
+2021-07-10 09:54:31.094347 > 	Popped a node with score: 0.22699044680686253 at depth: 3
+2021-07-10 09:54:31.119995 > 	New best! score: 0.0 at depth: 4
+2021-07-10 09:54:31.122122 > 	Predicted best value 0.0048152728151616975 for new best with delta 0.0048152728151616975
+2021-07-10 09:54:31.165647 > 	Layer completed after 0.0710375790000004 seconds
+2021-07-10 09:54:31.177286 > 	Finished compilation at depth 4 with score 0.0 after 0.21325291200000063 seconds.
+2021-07-10 09:54:31.178898 > 	Finished all sub-compilations at depth 4 with score 0.0 after 0.21515123599999963 seconds.

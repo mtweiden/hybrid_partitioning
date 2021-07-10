@@ -1,0 +1,36 @@
+2021-07-10 09:54:35.701844 > 	There are 16 processors available to Pool.
+2021-07-10 09:54:35.702114 > 	The branching factor is 3.
+2021-07-10 09:54:35.702238 > 	The beam factor is 5.
+2021-07-10 09:54:35.705999 > 	New best! 0.5469770721793277 at depth 0
+2021-07-10 09:54:35.707530 > 	Popped a node with score: 0.5469770721793277 at depth: 0
+2021-07-10 09:54:35.719705 > 	New best! score: 0.309767830563379 at depth: 1
+2021-07-10 09:54:35.720658 > 	New best! score: 0.1725343996680676 at depth: 1
+2021-07-10 09:54:35.727561 > 	Layer completed after 0.019780402999998614 seconds
+2021-07-10 09:54:35.728313 > 	Popped a node with score: 0.1725343996680676 at depth: 1
+2021-07-10 09:54:35.728428 > 	Popped a node with score: 0.2418435811514985 at depth: 1
+2021-07-10 09:54:35.728531 > 	Popped a node with score: 0.309767830563379 at depth: 1
+2021-07-10 09:54:35.740849 > 	New best! score: 0.023937470791700388 at depth: 2
+2021-07-10 09:54:35.742283 > 	Predicted best value nan for new best with delta nan
+2021-07-10 09:54:35.746014 > 	New best! score: 0.004815273330657122 at depth: 2
+2021-07-10 09:54:35.747091 > 	Predicted best value 0.023937470791700333 for new best with delta 0.01912219746104321
+2021-07-10 09:54:36.002310 > 	Layer completed after 0.2735516520000001 seconds
+2021-07-10 09:54:36.003975 > 	Popped a node with score: 0.004815273330657122 at depth: 2
+2021-07-10 09:54:36.004212 > 	Popped a node with score: 0.01921471966287913 at depth: 2
+2021-07-10 09:54:36.004546 > 	Popped a node with score: 0.023937470791700388 at depth: 2
+2021-07-10 09:54:36.004731 > 	Popped a node with score: 0.357266712236469 at depth: 2
+2021-07-10 09:54:36.004911 > 	Popped a node with score: 0.35726672756656963 at depth: 2
+2021-07-10 09:54:36.035420 > 	New best! score: 0.004815273329912717 at depth: 3
+2021-07-10 09:54:36.036351 > 	Predicted best value -0.21239837099336578 for new best with delta -0.2172136443232785
+2021-07-10 09:54:36.071582 > 	There are 16 processors available to Pool.
+2021-07-10 09:54:36.071843 > 	The branching factor is 3.
+2021-07-10 09:54:36.071964 > 	The beam factor is 5.
+2021-07-10 09:54:36.079277 > 	New best! 0.004815273329507597 at depth 0
+2021-07-10 09:54:36.081109 > 	Popped a node with score: 0.004815273329507597 at depth: 0
+2021-07-10 09:54:36.135910 > 	Layer completed after 0.05432558999999948 seconds
+2021-07-10 09:54:36.137247 > 	Popped a node with score: 0.004815274791655 at depth: 1
+2021-07-10 09:54:36.137416 > 	Popped a node with score: 0.22699240629131212 at depth: 1
+2021-07-10 09:54:36.137545 > 	Popped a node with score: 0.2962984453256712 at depth: 1
+2021-07-10 09:54:36.166669 > 	New best! score: 1.1102230246251565e-16 at depth: 2
+2021-07-10 09:54:36.299580 > 	Layer completed after 0.1617179809999989 seconds
+2021-07-10 09:54:36.309301 > 	Finished compilation at depth 2 with score 1.1102230246251565e-16 after 0.2622071960000003 seconds.
+2021-07-10 09:54:36.311165 > 	Finished all sub-compilations at depth 5 with score 1.1102230246251565e-16 after 0.6357996369999999 seconds.
