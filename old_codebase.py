@@ -16,21 +16,48 @@ from os.path import exists
 
 from numpy import ndarray
 
+def weighted_astar(circ, v, weight, options):
+	"""
+	Heuristic based off astar that takes into account gateset weights.
+	"""
+	# Should I add weights from all layers or just the last?
+	gateset_weight = 0
+	gateset = options["gateset"].adjacency
+	all_gates = circ._subgates
+	# Physical gates are free
+	gate_weights = {(e[0],e[1]): e[2]-1 for e in gateset}
+	for num_layers, layer in enumerate(all_gates):
+		for gate in layer.assemble(v):
+			if gate[1] == "CNOT":
+				gateset_weight += gate_weights[gate[3]]
+	# Normalization factor is the weight if each layer uses the most expensive
+	# edge. No need to normalize with number of qudits because each layer only
+	# contains a single CNOT.
+	normalization = options["max_gateset_weight"] * num_layers
+	gateset_weight /= normalization if normalization > 1 else 1
+	# Max possible value for weights in 
+	astar_cost = 10.0*options.eval_func(options.target, circ.matrix(v)) + weight
+	return  astar_cost + gateset_weight
 
 def call_old_codebase_leap(
 	unitary   : ndarray, 
 	graph	 : Sequence[Sequence[int]], 
 	proj_name : str,
 ) -> str:
-	# Convert to unitary
-	#unitary = endian_reverse(unitary)
-	# Create project and set up
+	# No need to reverse endianness from QASM because we are interacting with
+	# unitaries produced by bqskit.
 	project = Project('synthesis_files/' + proj_name)
 	project.add_compilation(proj_name, unitary)
 	gateset = gatesets.QubitCNOTAdjacencyList(list(graph))
 	project['gateset'] = gateset
 	project['compiler_class'] = leap_compiler.LeapCompiler
 	project['verbosity'] = 2
+	max_weight = 1
+	for edge in graph:
+		if edge[2] > max_weight:
+			max_weight = edge[2]
+	project['max_gateset_weight'] = max_weight
+	project['heuristic'] = weighted_astar
 
 	# Run
 	project.run()
@@ -66,37 +93,6 @@ def check_for_leap_files(leap_proj):
 		return False
 	else:
 		return True
-
-
-def format(input_line, layout_map) -> str:
-    """
-    Returns new qasm line with physical qubit numbering.
-
-    Args:
-        input_line (str): Original qasm string.
-
-        layout_map (dict): Logical to physical mapping.
-    
-    Returns:
-        qasm_str (str): Newly mapped qasm string.
-
-    Note:
-        Assumes there is a single register named 'q', replaces that name with 
-        'physical'.
-    """
-    # Find all instances of qubit reference
-    if match('qreg', input_line):
-        return input_line.replace('q[', 'physical[')
-
-    qasm_str = input_line
-
-    log_qubits = list(findall('q\[\d+\]', input_line))
-    for lq in log_qubits:
-        log_number = int(findall('\d+', lq)[0])
-        replacement = 'physical[' + str(layout_map[log_number]) + ']'
-        qasm_str = qasm_str.replace(lq, replacement)
-        
-    return qasm_str.replace('physical[', 'q[')
 
 
 if __name__ == '__main__':

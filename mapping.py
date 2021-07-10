@@ -9,7 +9,6 @@ from re import match, findall
 from sys import argv
 # Project dependiences
 from coupling import get_coupling_map
-from qasm_mapping import format
 
 
 def find_num_qudits(
@@ -90,6 +89,38 @@ def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
 			out_qasm.write(in_qasm.read())
+
+
+def format(input_line, layout_map) -> str:
+    """
+    Returns new qasm line with physical qubit numbering.
+
+    Args:
+        input_line (str): Original qasm string.
+
+        layout_map (dict): Logical to physical mapping.
+    
+    Returns:
+        qasm_str (str): Newly mapped qasm string.
+
+    Note:
+        Assumes there is a single register named 'q', replaces that name with 
+        'physical'.
+    """
+    # Find all instances of qubit reference
+    if match('qreg', input_line):
+        return input_line.replace('q[', 'physical[')
+
+    qasm_str = input_line
+
+    log_qubits = list(findall('q\[\d+\]', input_line))
+    for lq in log_qubits:
+        log_number = int(findall('\d+', lq)[0])
+        replacement = 'physical[' + str(layout_map[log_number]) + ']'
+        qasm_str = qasm_str.replace(lq, replacement)
+        
+    return qasm_str.replace('physical[', 'q[')
+
 
 if __name__ == "__main__":
 	if len(argv) != 3:

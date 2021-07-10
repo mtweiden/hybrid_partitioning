@@ -196,13 +196,17 @@ if __name__ == '__main__':
 					# Get rid of weights for now
 					# TODO: Add weighted edges to synthesis function
 					q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
-					sub_edges = [(q_map[e[0]], q_map[e[1]]) for e in subtopology.edges]
+					sub_edges = [
+						(q_map[e[0]], q_map[e[1]], subtopology[e[0]][e[1]]["weight"]) 
+						for e in subtopology.edges
+					]
 					# Load circuit
 					block_path = f"{partition_dir}/{block_files[block_num]}"
 					subcircuit = load_block_circuit(block_path, options)
 					unitary = subcircuit.get_unitary().get_numpy()
 					print(f"  Synthesizing block {block_num+1}/{len(block_files)}")
 					# Synthesize
+					print(sub_edges)
 					subcircuit_qasm = call_old_codebase_leap(
 						unitary,
 						sub_edges,
@@ -229,6 +233,6 @@ if __name__ == '__main__':
 				print("Found existing file for %s, skipping routing" 
 					%(mapped_qasm_file))
 			else:
-				do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
-				#dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+				#do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+				dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
 			#endregion
