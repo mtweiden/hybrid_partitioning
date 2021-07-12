@@ -13,6 +13,7 @@ from qsearch import (
 from shutil import rmtree
 from re import match, findall
 from os.path import exists
+from psutil import cpu_count
 
 from numpy import ndarray
 
@@ -57,7 +58,7 @@ def call_old_codebase_leap(
 		if edge[2] > max_weight:
 			max_weight = edge[2]
 	project['max_gateset_weight'] = max_weight
-	project['heuristic'] = weighted_astar
+	#project['heuristic'] = weighted_astar
 
 	# Run
 	project.run()

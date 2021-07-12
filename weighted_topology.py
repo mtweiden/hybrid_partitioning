@@ -5,7 +5,7 @@ logical-physical topology.
 
 from __future__ import annotations
 import pickle
-from typing import Sequence
+from typing import Any, Sequence
 from re import match, findall
 from pickle import load
 from networkx import Graph, shortest_path_length
@@ -192,7 +192,8 @@ def collect_stats(
     hybrid_graph : Graph,
     qudit_group : Sequence[int],
     blocksize : int | None = None,
-) -> str | tuple[str, int]:
+	options : dict[str, Any] | None = None,
+) -> str:
     # NOTE: may break if idle qudit are removed
     blocksize = len(qudit_group) if blocksize is None else blocksize
     logical_ops = get_logical_operations(circuit, qudit_group)
@@ -224,7 +225,18 @@ def collect_stats(
         f"    partitionable CNOTs  : {partitionable_cost}\n"
         f"    unpartitionable CNOTs: {unpartitionable_cost}\n"
     )
-    return (stats, total_cost)
+    total_ops = sum([len(physical), len(partitionable), len(unpartitionable)])
+    if options is not None:
+        options["physical_ops"] += len(physical)
+        options["partitionable_ops"] += len(partitionable)
+        options["unpartitionable_ops"] += len(unpartitionable)
+        options["estimated_cnots"] += total_cost
+        if total_ops > options["max_block_length"]:
+            options["max_block_length"] = total_ops
+        if total_ops < options["min_block_length"]:
+            options["min_block_length"] = total_ops
+
+    return stats
 
 
 def cost_function(distance: int) -> int:
@@ -412,8 +424,7 @@ def get_hybrid_topology(
 	)
 	hybrid_graph.add_weighted_edges_from(physical_edge_set)
 
-	(stats_str, total_cx) = collect_stats(circuit, physical_graph, 
-		hybrid_graph, qudit_group)
+	stats_str = collect_stats(circuit, physical_graph, hybrid_graph, 
+		qudit_group, options=options)
 	print(stats_str)
-	options["estimated_cnots"] += total_cx
 	return hybrid_graph

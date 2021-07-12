@@ -53,6 +53,11 @@ if __name__ == '__main__':
 			"nearest_logical"  : args.nearest_logical,
 			"nearest_physical"  : args.nearest_physical,
 			"is_qasm" : checkpoint_as_qasm,
+			"physical_ops" : 0,
+			"partitionable_ops" : 0,
+			"unpartitionable_ops" : 0,
+			"max_block_length" : 0,
+			"min_block_length" : 0,
 			"estimated_cnots" : 0,
 		}
 
@@ -162,6 +167,14 @@ if __name__ == '__main__':
 				f"_subtopology.pickle"
 			)
 			save_block_topology(subtopology, subtopology_path)
+		total_ops = sum([options["physical_ops"], options["partitionable_ops"],
+			options["unpartitionable_ops"]])
+		print("Summary:")
+		print(f"Number of blocks: {len(block_files)}")
+		print(f"Mean block size (cnots): {total_ops/len(block_files)}")
+		print(f"Total physical operations: {options['physical_ops']}")
+		print(f"Total partitionable operations: {options['partitionable_ops']}")
+		print(f"Total unpartitionable operations: {options['unpartitionable_ops']}")
 		print(f"Estimated CNOT count: {options['estimated_cnots']}")
 		#endregion
 
@@ -233,6 +246,6 @@ if __name__ == '__main__':
 				print("Found existing file for %s, skipping routing" 
 					%(mapped_qasm_file))
 			else:
-				#do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
-				dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+				do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
+				#dummy_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
 			#endregion
