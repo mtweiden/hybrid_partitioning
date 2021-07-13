@@ -274,6 +274,10 @@ if __name__ == '__main__':
 			for block_offset in range(options["num_synth_procs"]):
 				# Do set ups
 				block_number = block_num + block_offset
+				print(
+					f"    Synthesizing block {block_number+1}"
+					f"/{len(block_files)}"
+				)
 				if block_number >= len(block_files):
 					break
 				subtopology_path = (
@@ -345,7 +349,6 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 			else:
-				do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
 				dummy_routing(
 					options["synthesized_qasm_file"], 
 					options["coupling_map"], 
