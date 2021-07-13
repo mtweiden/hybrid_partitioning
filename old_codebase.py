@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence
+from typing import Any, Sequence
 
 from qsearch import (
 	Project,
@@ -40,10 +40,16 @@ def weighted_astar(circ, v, weight, options):
 	astar_cost = 10.0*options.eval_func(options.target, circ.matrix(v)) + weight
 	return  astar_cost + gateset_weight
 
+
+def num_tasks(num_synth_procs : int) -> int:
+	return max([cpu_count(logical=False)//num_synth_procs, 1])
+
+
 def call_old_codebase_leap(
 	unitary   : ndarray, 
 	graph	 : Sequence[Sequence[int]], 
 	proj_name : str,
+	num_synth_procs : int = 1,
 ) -> str:
 	# No need to reverse endianness from QASM because we are interacting with
 	# unitaries produced by bqskit.
@@ -58,6 +64,8 @@ def call_old_codebase_leap(
 		if edge[2] > max_weight:
 			max_weight = edge[2]
 	project['max_gateset_weight'] = max_weight
+	project["max_synth_procs"] = num_synth_procs
+	project["num_tasks"] = num_tasks(num_synth_procs)
 	#project['heuristic'] = weighted_astar
 
 	# Run
