@@ -186,7 +186,7 @@ if __name__ == '__main__':
 	print("Doing logical partitioning on %s..." %(options["target_name"]))
 	print("="*80)
 	# TODO: Errors if directory exists but does not have correct files
-	if exists("block_files/" + options["target_name"]):
+	if exists(f"block_files/{options['target_name']}/finished.txt"):
 		print(
 			"Found existing directory for block_files/"
 			f"{options['target_name']}, skipping partitioning..."
@@ -206,6 +206,10 @@ if __name__ == '__main__':
 			options["checkpoint_as_qasm"]
 		)
 		saver.run(circuit, {})
+		with open(
+			f"block_files/{options['target_name']}/finished.txt", "w"
+		) as f:
+			f.write("finished partitioning")
 	block_files = sorted(listdir(options["partition_dir"]))
 	block_names = []
 	for bf in block_files:
