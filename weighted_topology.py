@@ -195,6 +195,7 @@ def collect_stats(
 	options : dict[str, Any] | None = None,
 ) -> str:
     # NOTE: may break if idle qudit are removed
+    hybrid_copy = hybrid_graph.copy()
     blocksize = len(qudit_group) if blocksize is None else blocksize
     logical_ops = get_logical_operations(circuit, qudit_group)
 
@@ -204,10 +205,10 @@ def collect_stats(
     unpartitionable = get_unpartitionable_edges(logical_ops,
         physical_graph, qudit_group)
 
-    physical_cost = estimate_cnot_count(physical, hybrid_graph)
-    partitionable_cost = estimate_cnot_count(partitionable, hybrid_graph, 
+    physical_cost = estimate_cnot_count(physical, hybrid_copy)
+    partitionable_cost = estimate_cnot_count(partitionable, hybrid_copy, 
         qudit_group)
-    unpartitionable_cost = estimate_cnot_count(unpartitionable, hybrid_graph, 
+    unpartitionable_cost = estimate_cnot_count(unpartitionable, hybrid_copy, 
         qudit_group)
     total_cost = sum([physical_cost, partitionable_cost, unpartitionable_cost])
     stats = (
