@@ -12,7 +12,7 @@ def load_block_circuit(
 	block_path : str,
 	options : dict[str, Any]
 ) -> Circuit:
-	if options['is_qasm']:
+	if options['checkpoint_as_qasm']:
 		with open(block_path, "r") as f:
 			return OPENQASM2Language().decode(f.read())
 	else:

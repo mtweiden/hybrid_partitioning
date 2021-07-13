@@ -406,7 +406,7 @@ def get_hybrid_topology(
 	# Get the logical connectivity graph
 	logical_operations = []
 	# QASM format
-	if options['is_qasm']:
+	if options['checkpoint_as_qasm']:
 		with open(circuit_file, 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
 	# Pickle format
