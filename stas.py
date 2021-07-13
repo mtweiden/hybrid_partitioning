@@ -1,29 +1,36 @@
 from __future__ import annotations
 from typing import Any
-from old_codebase import call_old_codebase_leap, check_for_leap_files, parse_leap_files
-
-from bqskit.ir.circuit import Circuit
-
-from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
-from bqskit.compiler.machine import MachineModel
-from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
-from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
-
-# Enable logging
-import logging
-logging.getLogger('bqskit').setLevel(logging.DEBUG)
-
-from mapping import do_layout, do_routing, find_num_qudits
-from mapping import dummy_layout, dummy_routing, find_num_qudits
-from weighted_topology import get_hybrid_topology, get_logical_operations
-from util import load_block_circuit, load_block_topology, load_circuit_structure, save_block_topology
-
 from math import ceil, sqrt
 from os.path import exists
 from os import mkdir, listdir
 import argparse
 import pickle
 from multiprocessing import Process
+
+from bqskit.ir.circuit import Circuit
+from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
+from bqskit.compiler.machine import MachineModel
+from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
+from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
+
+from mapping import do_layout, do_routing, find_num_qudits
+from mapping import dummy_layout, dummy_routing, find_num_qudits
+from weighted_topology import get_hybrid_topology, get_logical_operations
+from util import (
+	load_block_circuit, 
+	load_block_topology, 
+	load_circuit_structure, 
+	save_block_topology
+)
+from old_codebase import (
+	call_old_codebase_leap, 
+	check_for_leap_files, 
+	parse_leap_files
+)
+
+# Enable logging
+import logging
+logging.getLogger('bqskit').setLevel(logging.DEBUG)
 
 
 def synthesize(
