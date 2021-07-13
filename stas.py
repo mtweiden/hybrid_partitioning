@@ -345,9 +345,17 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 			else:
+				do_routing(synthesized_qasm_file, coupling_map, mapped_qasm_file)
 				dummy_routing(
 					options["synthesized_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
 				)
 		#endregion
+	print("Summary:")
+	print(f"Number of blocks: {len(block_files)}")
+	print(f"Mean block size (cnots): {total_ops/len(block_files)}")
+	print(f"Total physical operations: {options['physical_ops']}")
+	print(f"Total partitionable operations: {options['partitionable_ops']}")
+	print(f"Total unpartitionable operations: {options['unpartitionable_ops']}")
+	print(f"Estimated CNOT count: {options['estimated_cnots']}")
