@@ -199,7 +199,11 @@ if __name__ == '__main__':
 			get_logical_operations(circuit)
 		)
 		partitioner = ScanPartitioner(args.block_size)
-		partitioner.run(circuit, {"machine_model": logical_machine})
+		data = {
+			"machine_model": logical_machine,
+			"keep_idle_qudits": True
+		}
+		partitioner.run(circuit, data)
 		saver = SaveIntermediatePass(
 			"block_files/", 
 			options["target_name"],
@@ -219,6 +223,7 @@ if __name__ == '__main__':
 			block_names.append(bf.split(".qasm")[0])
 		else:
 			block_names.append(bf.split(".pickle")[0])
+	print(block_names)
 	#endregion
 
 	# Subtopology analysis
