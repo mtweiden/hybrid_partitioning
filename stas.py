@@ -154,6 +154,8 @@ if __name__ == '__main__':
 		help="number of processes while doing partitioning")
 	parser.add_argument("--dummy_map", action="store_true",
 		help="turn off layout and routing")
+	parser.add_argument("--partition_only", action="store_true",
+		help="skip synthesis and routing")
 	args = parser.parse_args()
 	#endregion
 
@@ -271,7 +273,7 @@ if __name__ == '__main__':
 			"skipping synthesis\n",
 			"="*80
 		)
-	else:
+	elif not args.partition_only:
 		synthesized_circuit = Circuit(options["num_p"])
 		structure = load_circuit_structure(options["partition_dir"])
 		block_list = list(range(0, len(block_files), 
@@ -349,7 +351,7 @@ if __name__ == '__main__':
 				f"Found existing file for {options['mapped_qasm_file']}, "
 				"skipping routing" 
 			)
-		else:
+		elif not args.partition_only:
 			if not args.dummy_map:
 				do_routing(
 					options["synthesized_qasm_file"], 
