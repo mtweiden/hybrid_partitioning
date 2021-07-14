@@ -220,6 +220,7 @@ if __name__ == '__main__':
 				block_names.append(bf.split(".pickle")[0])
 		else:
 			block_files.remove(bf)
+	print(block_names)
 	#endregion
 
 	# Subtopology analysis
