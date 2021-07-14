@@ -186,7 +186,7 @@ if __name__ == '__main__':
 	print("Doing logical partitioning on %s..." %(options["target_name"]))
 	print("="*80)
 	# TODO: Errors if directory exists but does not have correct files
-	if exists(f"block_files/{options['target_name']}/finished.txt"):
+	if exists(f"block_files/{options['target_name']}/finished"):
 		print(
 			"Found existing directory for block_files/"
 			f"{options['target_name']}, skipping partitioning..."
@@ -207,19 +207,19 @@ if __name__ == '__main__':
 		)
 		saver.run(circuit, {})
 		with open(
-			f"block_files/{options['target_name']}/finished.txt", "w"
+			f"block_files/{options['target_name']}/finished", "w"
 		) as f:
 			f.write("finished partitioning")
 	block_files = sorted(listdir(options["partition_dir"]))
 	block_names = []
+	block_files.remove("structure.pickle")
+	block_files.remove("finished")
 	for bf in block_files:
-		if not "structure.pickle" in bf:
-			if options["checkpoint_as_qasm"]:
-				block_names.append(bf.split(".qasm")[0])
-			else:
-				block_names.append(bf.split(".pickle")[0])
+		if options["checkpoint_as_qasm"]:
+			block_names.append(bf.split(".qasm")[0])
 		else:
-			block_files.remove(bf)
+			block_names.append(bf.split(".pickle")[0])
+	print(block_files)
 	#endregion
 
 	# Subtopology analysis
