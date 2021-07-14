@@ -10,8 +10,8 @@ from qsearch import (
 	assemblers,
 	multistart_solvers
 )
+from util import load_block_topology, load_block_circuit
 from shutil import rmtree
-from re import match, findall
 from os.path import exists
 from psutil import cpu_count
 
@@ -102,6 +102,49 @@ def check_for_leap_files(leap_proj):
 		return False
 	else:
 		return True
+
+
+def synthesize(
+	block_number : int,
+	number_of_blocks : int,
+	qudit_group : list[int],
+	subtopology_path : str,
+	block_path : str,
+	options : dict[str, Any],
+) -> None:
+	# Get subcircuit QASM by loading checkpoint or by synthesis
+	if check_for_leap_files(f"{options['target_name']}_block_{block_number}"):
+		print(f"  Loading block {block_number+1}/{number_of_blocks}")
+		subcircuit_qasm = parse_leap_files(
+			f"{options['target_name']}_block_{block_number}"
+		)
+	else:
+		# Load subtopology
+		weighted_topology = load_block_topology(subtopology_path)
+		subtopology = weighted_topology.subgraph(qudit_group)
+		# Get rid of weights for now
+		# TODO: Add weighted edges to synthesis function
+		q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
+		sub_edges = [
+			(q_map[e[0]], q_map[e[1]], subtopology[e[0]][e[1]]["weight"]) 
+			for e in subtopology.edges
+		]
+		# Load circuit
+		subcircuit = load_block_circuit(block_path, options)
+		unitary = subcircuit.get_unitary().get_numpy()
+		print(f"  Synthesizing block {block_number+1}/{number_of_blocks}")
+		# Synthesize
+		print("Using edges: ", sub_edges)
+		subcircuit_qasm = call_old_codebase_leap(
+			unitary,
+			sub_edges,
+			options["target_name"] + f"_block_{block_number}",
+			options["num_synth_procs"],
+		)
+		with open(
+			f"{options['checkpoint_dir']}_block_{block_number}.qasm", "w"
+		) as f:
+			f.write(subcircuit_qasm)
 
 
 if __name__ == '__main__':

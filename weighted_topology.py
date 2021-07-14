@@ -229,8 +229,11 @@ def collect_stats(
     total_ops = sum([len(physical), len(partitionable), len(unpartitionable)])
     if options is not None:
         options["physical_ops"] += len(physical)
+        options["physical_cost"] += physical_cost
         options["partitionable_ops"] += len(partitionable)
+        options["partitionable_cost"] += partitionable_cost
         options["unpartitionable_ops"] += len(unpartitionable)
+        options["unpartitionable_cost"] += unpartitionable_cost
         options["estimated_cnots"] += total_cost
         if total_ops > options["max_block_length"]:
             options["max_block_length"] = total_ops

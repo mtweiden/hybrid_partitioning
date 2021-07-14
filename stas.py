@@ -13,121 +13,21 @@ from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
-from mapping import do_layout, do_routing, find_num_qudits
-from mapping import dummy_layout, dummy_routing, find_num_qudits
+from mapping import do_layout, do_routing
+from mapping import dummy_layout, dummy_routing
 from weighted_topology import get_hybrid_topology, get_logical_operations
 from util import (
-	load_block_circuit, 
-	load_block_topology, 
 	load_circuit_structure, 
-	save_block_topology
+	save_block_topology,
+	setup_options,
+	print_summary,
 )
-from old_codebase import (
-	call_old_codebase_leap, 
-	check_for_leap_files, 
-	parse_leap_files
-)
+from old_codebase import synthesize
 
 # Enable logging
 import logging
 logging.getLogger('bqskit').setLevel(logging.DEBUG)
 
-
-def synthesize(
-	block_number : int,
-	number_of_blocks : int,
-	qudit_group : list[int],
-	subtopology_path : str,
-	block_path : str,
-	options : dict[str, Any],
-) -> None:
-	# Get subcircuit QASM by loading checkpoint or by synthesis
-	if check_for_leap_files(f"{options['target_name']}_block_{block_number}"):
-		print(f"  Loading block {block_number+1}/{number_of_blocks}")
-		subcircuit_qasm = parse_leap_files(
-			f"{options['target_name']}_block_{block_number}"
-		)
-	else:
-		# Load subtopology
-		weighted_topology = load_block_topology(subtopology_path)
-		subtopology = weighted_topology.subgraph(qudit_group)
-		# Get rid of weights for now
-		# TODO: Add weighted edges to synthesis function
-		q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
-		sub_edges = [
-			(q_map[e[0]], q_map[e[1]], subtopology[e[0]][e[1]]["weight"]) 
-			for e in subtopology.edges
-		]
-		# Load circuit
-		subcircuit = load_block_circuit(block_path, options)
-		unitary = subcircuit.get_unitary().get_numpy()
-		print(f"  Synthesizing block {block_number+1}/{number_of_blocks}")
-		# Synthesize
-		print("Using edges: ", sub_edges)
-		subcircuit_qasm = call_old_codebase_leap(
-			unitary,
-			sub_edges,
-			options["target_name"] + f"_block_{block_number}",
-			options["num_synth_procs"],
-		)
-		with open(
-			f"{options['checkpoint_dir']}_block_{block_number}.qasm", "w"
-		) as f:
-			f.write(subcircuit_qasm)
-	
-
-def setup_options(
-	qasm_file : str, 
-	args : argparse.Namespace
-) -> dict[str,Any]:
-
-	num_q = find_num_qudits(qasm_file)
-	num_p_sqrt = ceil(sqrt(num_q))
-	coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
-	checkpoint_as_qasm = True
-
-	options = {
-		"block_size"	 : args.block_size,
-		"coupling_map"   : coupling_map,
-		"shortest_direct"  : args.shortest_direct,
-		"nearest_logical"  : args.nearest_logical,
-		"nearest_physical"  : args.nearest_physical,
-		"num_synth_procs" : args.num_synth_procs,
-		"num_part_procs" : args.num_part_procs,
-		"checkpoint_as_qasm" : checkpoint_as_qasm,
-		"num_p" : num_p_sqrt ** 2,
-		"physical_ops" : 0,
-		"partitionable_ops" : 0,
-		"unpartitionable_ops" : 0,
-		"max_block_length" : 0,
-		"min_block_length" : 0,
-		"estimated_cnots" : 0,
-	}
-
-	edge_opts = [args.nearest_logical, args.nearest_physical, 
-		args.shortest_direct]
-	if not any(edge_opts):
-		args.shortest_direct = True
-
-	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
-	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
-	suffix = f"_blocksize_{args.block_size}"
-	if args.shortest_direct:
-		suffix += "_shortestdirect"
-	elif args.nearest_physical:
-		suffix += "_nearestphysical"
-	elif args.nearest_logical:
-		suffix += "_nearestlogical"
-	target_name += suffix
-	options["target_name"] = target_name
-	options["layout_qasm_file"] = "layout_qasm/" + target_name
-	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
-	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
-	options["checkpoint_dir"] = "synthesis_files/" + target_name
-	options["partition_dir"] = "block_files/" + target_name
-	options["subtopology_dir"] = "subtopology_files/" + target_name
-
-	return options
 
 
 if __name__ == '__main__':
@@ -253,13 +153,7 @@ if __name__ == '__main__':
 		save_block_topology(subtopology, subtopology_path)
 	total_ops = sum([options["physical_ops"], options["partitionable_ops"],
 		options["unpartitionable_ops"]])
-	print("Summary:")
-	print(f"Number of blocks: {len(block_files)}")
-	print(f"Mean block size (cnots): {total_ops/len(block_files)}")
-	print(f"Total physical operations: {options['physical_ops']}")
-	print(f"Total partitionable operations: {options['partitionable_ops']}")
-	print(f"Total unpartitionable operations: {options['unpartitionable_ops']}")
-	print(f"Estimated CNOT count: {options['estimated_cnots']}")
+	print_summary(options, total_ops, block_files)
 	#endregion
 
 	# Synthesis
@@ -365,10 +259,4 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	print("Summary:")
-	print(f"Number of blocks: {len(block_files)}")
-	print(f"Mean block size (cnots): {total_ops/len(block_files)}")
-	print(f"Total physical operations: {options['physical_ops']}")
-	print(f"Total partitionable operations: {options['partitionable_ops']}")
-	print(f"Total unpartitionable operations: {options['unpartitionable_ops']}")
-	print(f"Estimated CNOT count: {options['estimated_cnots']}")
+	print_summary(options, total_ops, block_files)
