@@ -1,6 +1,4 @@
 from __future__ import annotations
-from typing import Any
-from math import ceil, sqrt
 from os.path import exists
 from os import mkdir, listdir
 import argparse
@@ -60,6 +58,8 @@ if __name__ == '__main__':
 	#endregion
 
 	options = setup_options(args.qasm_file, args)
+	if not exists(options["synthesis_dir"]):
+		mkdir(options["synthesis_dir"])
 
 	# Layout
 	#region layout
@@ -224,7 +224,7 @@ if __name__ == '__main__':
 		# Format QASM as subcircuit & add to circuit
 		for block_num in range(len(block_files)):
 			with open(
-				f"{options['checkpoint_dir']}_block_{block_num}.qasm", "r"
+				f"{options['synthesis_dir']}/block_{block_num}.qasm", "r"
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)

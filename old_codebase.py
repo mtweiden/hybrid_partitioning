@@ -14,6 +14,7 @@ from util import load_block_topology, load_block_circuit
 from shutil import rmtree
 from os.path import exists
 from psutil import cpu_count
+from re import search
 
 from numpy import ndarray
 
@@ -53,8 +54,9 @@ def call_old_codebase_leap(
 ) -> str:
 	# No need to reverse endianness from QASM because we are interacting with
 	# unitaries produced by bqskit.
-	project = Project('synthesis_files/' + proj_name)
-	project.add_compilation(proj_name, unitary)
+	block_name = search("block_\d+", proj_name)[0]
+	project = Project(proj_name)
+	project.add_compilation(block_name, unitary)
 	gateset = gatesets.QubitCNOTAdjacencyList(list(graph))
 	project['gateset'] = gateset
 	project['compiler_class'] = leap_compiler.LeapCompiler
@@ -78,15 +80,14 @@ def call_old_codebase_leap(
 	#	weight_limit = 5
 	#)
 	qasm = project.assemble(
-		proj_name,
+		block_name,
 		assembler=assemblers.ASSEMBLER_IBMOPENQASM
 	)
 	return qasm
 
 
 def parse_leap_files(proj_name) -> str:
-	project = f"synthesis_files/{proj_name}.qasm"
-	with open(project, "r") as f:
+	with open(f"{proj_name}.qasm", "r") as f:
 		return f.read()
 
 
@@ -96,9 +97,9 @@ def check_for_leap_files(leap_proj):
 	Args:
 		Project to check for in the leap_files directory.
 	"""
-	if not exists(f"synthesis_files/{leap_proj}.qasm"):
-		if exists(f"synthesis_files/{leap_proj}"):
-			rmtree(f"synthesis_files/{leap_proj}")
+	if not exists(f"{leap_proj}.qasm"):
+		if exists(f"{leap_proj}"):
+			rmtree(f"{leap_proj}")
 		return False
 	else:
 		return True
@@ -113,11 +114,10 @@ def synthesize(
 	options : dict[str, Any],
 ) -> None:
 	# Get subcircuit QASM by loading checkpoint or by synthesis
-	if check_for_leap_files(f"{options['target_name']}_block_{block_number}"):
+	synth_dir = f"{options['synthesis_dir']}/block_{block_number}"
+	if check_for_leap_files(synth_dir):
 		print(f"  Loading block {block_number+1}/{number_of_blocks}")
-		subcircuit_qasm = parse_leap_files(
-			f"{options['target_name']}_block_{block_number}"
-		)
+		subcircuit_qasm = parse_leap_files(synth_dir)
 	else:
 		# Load subtopology
 		weighted_topology = load_block_topology(subtopology_path)
@@ -132,27 +132,14 @@ def synthesize(
 		# Load circuit
 		subcircuit = load_block_circuit(block_path, options)
 		unitary = subcircuit.get_unitary().get_numpy()
-		print(f"  Synthesizing block {block_number+1}/{number_of_blocks}")
 		# Synthesize
 		print("Using edges: ", sub_edges)
 		subcircuit_qasm = call_old_codebase_leap(
 			unitary,
 			sub_edges,
-			options["target_name"] + f"_block_{block_number}",
+			synth_dir,
 			options["num_synth_procs"],
 		)
-		with open(
-			f"{options['checkpoint_dir']}_block_{block_number}.qasm", "w"
-		) as f:
+		with open(f"{synth_dir}.qasm", "w") as f:
 			f.write(subcircuit_qasm)
 
-
-if __name__ == '__main__':
-    str1 = "cx q[0], q[1];"
-    str2 = "u3(0,0,-pi/4)  q[100];"
-    str3 = ""
-
-    mapping = {0:'a', 1:'b', 100:'c'}
-
-    print(format(str1, mapping))
-    print(format(str2, mapping))

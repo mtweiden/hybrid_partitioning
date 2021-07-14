@@ -8,7 +8,7 @@ from math import sqrt, ceil
 from bqskit import Circuit
 from bqskit.ir.gates.circuitgate import CircuitGate
 from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
-from bqskit.ir.region import CircuitRegion, CircuitRegionLike
+from bqskit.ir.region import CircuitRegion
 
 from mapping import find_num_qudits
 
@@ -125,7 +125,7 @@ def setup_options(
 	options["layout_qasm_file"] = "layout_qasm/" + target_name
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
-	options["checkpoint_dir"] = "synthesis_files/" + target_name
+	options["synthesis_dir"] = "synthesis_files/" + target_name
 	options["partition_dir"] = "block_files/" + target_name
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 
