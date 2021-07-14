@@ -125,7 +125,6 @@ if __name__ == '__main__':
 			block_names.append(bf.split(".qasm")[0])
 		else:
 			block_names.append(bf.split(".pickle")[0])
-	print(block_names)
 	#endregion
 
 	# Subtopology analysis
@@ -184,22 +183,11 @@ if __name__ == '__main__':
 				)
 				if block_number >= len(block_files):
 					break
-				subtopology_path = (
-					f"{options['subtopology_dir']}/"
-					f"{block_names[block_number]}_subtopology.pickle"
-				)
-				block_path = (
-					f"{options['partition_dir']}/"
-					f"{block_files[block_number]}"
-				)
 				# If uniprocessing, just call synthesis function
 				if options["num_synth_procs"] == 1:
 					synthesize(
-						block_number=block_number,
-						number_of_blocks=len(block_files),
+						block_name=block_names[block_number],
 						qudit_group=structure[block_number],
-						subtopology_path=subtopology_path,
-						block_path=block_path,
 						options=options,
 					)
 				# If multiprocessing, launch new processes
@@ -208,10 +196,7 @@ if __name__ == '__main__':
 						target=synthesize,
 						args=(
 							block_number,
-							len(block_files),
 							structure[block_number],
-							subtopology_path,
-							block_path,
 							options
 						)
 					)
@@ -224,7 +209,8 @@ if __name__ == '__main__':
 		# Format QASM as subcircuit & add to circuit
 		for block_num in range(len(block_files)):
 			with open(
-				f"{options['synthesis_dir']}/block_{block_num}.qasm", "r"
+				f"{options['synthesis_dir']}/{block_names[block_num]}.qasm",
+				"r"
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)

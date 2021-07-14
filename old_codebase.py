@@ -106,17 +106,19 @@ def check_for_leap_files(leap_proj):
 
 
 def synthesize(
-	block_number : int,
-	number_of_blocks : int,
+	block_name : str,
 	qudit_group : list[int],
-	subtopology_path : str,
-	block_path : str,
 	options : dict[str, Any],
 ) -> None:
 	# Get subcircuit QASM by loading checkpoint or by synthesis
-	synth_dir = f"{options['synthesis_dir']}/block_{block_number}"
+	synth_dir = f"{options['synthesis_dir']}/{block_name}"
+	block_path = f"{options['partition_dir']}/{block_name}.qasm"
+	subtopology_path = (
+		f"subtopology_files/{options['target_name']}/"
+		f"{block_name}_subtopology.pickle"
+	)
 	if check_for_leap_files(synth_dir):
-		print(f"  Loading block {block_number+1}/{number_of_blocks}")
+		print(f"  Loading block {block_name}")
 		subcircuit_qasm = parse_leap_files(synth_dir)
 	else:
 		# Load subtopology
