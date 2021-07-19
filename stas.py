@@ -63,7 +63,9 @@ if __name__ == '__main__':
 
 	# Layout
 	#region layout
-	print("="*80, f"\nDoing layout for {args.qasm_file}...\n", "="*80) 
+	print("="*80)
+	print(f"Doing layout for {options['target_name']}...")
+	print("="*80) 
 	if exists(options["layout_qasm_file"]):
 		print("Found existing file for %s, skipping layout" 
 			%(options["layout_qasm_file"]))
@@ -88,10 +90,10 @@ if __name__ == '__main__':
 	print("Doing logical partitioning on %s..." %(options["target_name"]))
 	print("="*80)
 	# TODO: Errors if directory exists but does not have correct files
-	if exists(f"block_files/{options['target_name']}/finished"):
+	if exists(f"{options['partition_dir']}/finished"):
 		print(
-			"Found existing directory for block_files/"
-			f"{options['target_name']}, skipping partitioning..."
+			f"Found existing directory for {options['partition_dir']}"
+			", skipping partitioning..."
 		)
 	else:
 		with open(options["layout_qasm_file"], 'r') as f:
@@ -108,12 +110,12 @@ if __name__ == '__main__':
 		partitioner.run(circuit, data)
 		saver = SaveIntermediatePass(
 			"block_files/", 
-			options["target_name"],
+			options["save_part_name"],
 			options["checkpoint_as_qasm"]
 		)
 		saver.run(circuit, {})
 		with open(
-			f"block_files/{options['target_name']}/finished", "w"
+			f"{options['partition_dir']}/finished", "w"
 		) as f:
 			f.write("finished partitioning")
 	block_files = sorted(listdir(options["partition_dir"]))

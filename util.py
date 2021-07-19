@@ -104,6 +104,7 @@ def setup_options(
         "physical_cost" : 0,
         "partitionable_cost" : 0,
         "unpartitionable_cost" : 0,
+		"partitioner" : "scan"
 	}
 
 	edge_opts = [args.nearest_logical, args.nearest_physical, 
@@ -113,20 +114,25 @@ def setup_options(
 
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
 	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
-	suffix = f"_blocksize_{args.block_size}"
+	target_name += f"_blocksize_{args.block_size}"
+
+	options["layout_qasm_file"] = "layout_qasm/" + target_name
+	options["partition_dir"] = "block_files/" + target_name
+	options["save_part_name"] = target_name
+
+	suffix = ""
 	if args.shortest_direct:
 		suffix += "_shortestdirect"
 	elif args.nearest_physical:
 		suffix += "_nearestphysical"
 	elif args.nearest_logical:
 		suffix += "_nearestlogical"
+
 	target_name += suffix
 	options["target_name"] = target_name
-	options["layout_qasm_file"] = "layout_qasm/" + target_name
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
 	options["synthesis_dir"] = "synthesis_files/" + target_name
-	options["partition_dir"] = "block_files/" + target_name
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 
 	return options

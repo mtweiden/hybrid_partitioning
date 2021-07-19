@@ -3,7 +3,8 @@ from bqskit.compiler.passes.util.intermediate import RestoreIntermediatePass
 from bqskit import Circuit
 import pickle
 
-filename = "qft_5"
+#filename = "qft_5"
+filename = "add_9"
 coupling = "mesh_3_3"
 blocksize = "blocksize_3"
 suffix = "shortestdirect"
