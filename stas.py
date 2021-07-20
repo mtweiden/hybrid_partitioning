@@ -18,7 +18,7 @@ from util import (
 	load_circuit_structure, 
 	save_block_topology,
 	setup_options,
-	print_summary,
+	get_summary,
 )
 from old_codebase import synthesize
 
@@ -36,24 +36,31 @@ if __name__ == '__main__':
 		" based on the hybrid logical-physical topology scheme"
 	)
 	parser.add_argument("qasm_file", type=str, help="file to synthesize")
-	parser.add_argument("--blocksize", dest="block_size", action="store",
+	parser.add_argument("--blocksize", dest="blocksize", action="store",
 		nargs='?', default=3, type=int, help="synthesis block size")
+	parser.add_argument("--shortest_path", action="store_true",
+		help="add logical edges using shortest_path scheme")
 	parser.add_argument("--nearest_physical", action="store_true",
 		help="add logical edges using nearest_physical scheme")
-	parser.add_argument("--nearest_logical", action="store_true",
-		help="add logical edges using nearest_logical scheme")
-	parser.add_argument("--shortest_direct", action="store_true",
-		help="add logical edges using shortest_direct scheme")
+	parser.add_argument("--mst_path", action="store_true",
+		help="add logical edges using mst_path scheme")
+	parser.add_argument("--mst_density", action="store_true",
+		help="add logical edges using mst_density scheme")
 	parser.add_argument("--num_synth_procs", dest="num_synth_procs", 
 		action="store", nargs="?", default=1, type=int, 
 		help="number of blocks to synthesize at once")
 	parser.add_argument("--num_part_procs", dest="num_part_procs", 
 		action="store", nargs="?", default=1, type=int, 
 		help="number of processes while doing partitioning")
+	parser.add_argument("--partitioner", dest="partitioner", 
+		action="store", nargs="?", default="scan", type=str, 
+		help="partitioner to use")
 	parser.add_argument("--dummy_map", action="store_true",
 		help="turn off layout and routing")
 	parser.add_argument("--partition_only", action="store_true",
 		help="skip synthesis and routing")
+	parser.add_argument("--use_pickle", action="store_true",
+		help="store intermediate files as pickle instead of qasm")
 	args = parser.parse_args()
 	#endregion
 
@@ -90,7 +97,7 @@ if __name__ == '__main__':
 	print("Doing logical partitioning on %s..." %(options["target_name"]))
 	print("="*80)
 	# TODO: Errors if directory exists but does not have correct files
-	if exists(f"{options['partition_dir']}/finished"):
+	if exists(f"{options['partition_dir']}/summary.txt"):
 		print(
 			f"Found existing directory for {options['partition_dir']}"
 			", skipping partitioning..."
@@ -98,11 +105,13 @@ if __name__ == '__main__':
 	else:
 		with open(options["layout_qasm_file"], 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
+		
+		machine_edges, _ = get_logical_operations(circuit)
 		logical_machine = MachineModel(
 			options["num_p"], 
-			get_logical_operations(circuit)
+			machine_edges
 		)
-		partitioner = ScanPartitioner(args.block_size)
+		partitioner = ScanPartitioner(args.blocksize)
 		data = {
 			"machine_model": logical_machine,
 			"keep_idle_qudits": True
@@ -115,13 +124,13 @@ if __name__ == '__main__':
 		)
 		saver.run(circuit, {})
 		with open(
-			f"{options['partition_dir']}/finished", "w"
+			f"{options['partition_dir']}/summary.txt", "w"
 		) as f:
-			f.write("finished partitioning")
+			f.write("\n")
 	block_files = sorted(listdir(options["partition_dir"]))
 	block_names = []
 	block_files.remove("structure.pickle")
-	block_files.remove("finished")
+	block_files.remove("summary.txt")
 	for bf in block_files:
 		if options["checkpoint_as_qasm"]:
 			block_names.append(bf.split(".qasm")[0])
@@ -152,9 +161,9 @@ if __name__ == '__main__':
 			f"_subtopology.pickle"
 		)
 		save_block_topology(subtopology, subtopology_path)
-	total_ops = sum([options["physical_ops"], options["partitionable_ops"],
-		options["unpartitionable_ops"]])
-	print_summary(options, total_ops, block_files)
+	summary = get_summary(options, block_files)
+	with open(f"{options['partition_dir']}/summary.txt", "a") as f:
+		f.write(summary)
 	#endregion
 
 	# Synthesis
@@ -247,4 +256,4 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	print_summary(options, total_ops, block_files)
+	get_summary(options, block_files, True)

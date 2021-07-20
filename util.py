@@ -1,4 +1,5 @@
 from __future__ import annotations
+from re import match
 from typing import Any, Sequence
 import pickle
 import argparse
@@ -83,50 +84,57 @@ def setup_options(
 	num_q = find_num_qudits(qasm_file)
 	num_p_sqrt = ceil(sqrt(num_q))
 	coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
-	checkpoint_as_qasm = True
 
 	options = {
-		"block_size"	 : args.block_size,
+		"blocksize"	 : args.blocksize,
 		"coupling_map"   : coupling_map,
-		"shortest_direct"  : args.shortest_direct,
-		"nearest_logical"  : args.nearest_logical,
+		"shortest_path" : args.shortest_path,
 		"nearest_physical"  : args.nearest_physical,
+		"mst_path" : args.mst_path,
+		"mst_density" : args.mst_density,
 		"num_synth_procs" : args.num_synth_procs,
 		"num_part_procs" : args.num_part_procs,
-		"checkpoint_as_qasm" : checkpoint_as_qasm,
+		"partitioner" : args.partitioner,
+		"checkpoint_as_qasm" : not args.use_pickle,
 		"num_p" : num_p_sqrt ** 2,
-		"physical_ops" : 0,
-		"partitionable_ops" : 0,
-		"unpartitionable_ops" : 0,
+		"direct_ops" : 0,
+		"indirect_ops" : 0,
+		"external_ops" : 0,
+        "direct_volume" : 0,
+        "indirect_volume" : 0,
+        "external_volume" : 0,
 		"max_block_length" : 0,
 		"min_block_length" : 0,
 		"estimated_cnots" : 0,
-        "physical_cost" : 0,
-        "partitionable_cost" : 0,
-        "unpartitionable_cost" : 0,
-		"partitioner" : "scan"
+		"total_volume" : 0,
 	}
-
-	edge_opts = [args.nearest_logical, args.nearest_physical, 
-		args.shortest_direct]
-	if not any(edge_opts):
-		args.shortest_direct = True
 
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
 	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
-	target_name += f"_blocksize_{args.block_size}"
+	target_name += f"_blocksize_{args.blocksize}"
 
 	options["layout_qasm_file"] = "layout_qasm/" + target_name
 	options["partition_dir"] = "block_files/" + target_name
 	options["save_part_name"] = target_name
 
+	edge_opts = [
+		args.shortest_path, 
+		args.nearest_physical, 
+		args.mst_path, 
+		args.mst_density, 
+	]
+	if not any(edge_opts):
+		args.shortest_path = True
+
 	suffix = ""
-	if args.shortest_direct:
-		suffix += "_shortestdirect"
+	if args.shortest_path:
+		suffix += "_shortest-path"
 	elif args.nearest_physical:
-		suffix += "_nearestphysical"
-	elif args.nearest_logical:
-		suffix += "_nearestlogical"
+		suffix += "_nearest-physical"
+	elif args.mst_path:
+		suffix += "_mst-path" # Was nearest_logical
+	elif args.mst_density:
+		suffix += "_mst-density"
 
 	target_name += suffix
 	options["target_name"] = target_name
@@ -137,20 +145,52 @@ def setup_options(
 
 	return options
 
-def print_summary(
+def get_summary(
 	options : dict[str, Any], 
-	total_ops : int, 
-	block_files : Sequence[str]
-) -> None:
-	print(
+	block_files : Sequence[str],
+	post_flag : bool = False,
+) -> str:
+	total_ops = sum([options["direct_ops"], options["indirect_ops"], 
+		options["external_ops"]])
+	string = (
 		"Summary:\n"
 		f"Number of blocks: {len(block_files)}\n"
 		f"Mean block size (cnots): {total_ops/len(block_files)}\n"
-		f"Total physical operations: {options['physical_ops']}\n"
-		f"Total physical cost: {options['physical_cost']}\n"
-		f"Total partitionable operations: {options['partitionable_ops']}\n"
-		f"Total partitionable cost: {options['partitionable_cost']}\n"
-		f"Total unpartitionable operations: {options['unpartitionable_ops']}\n"
-		f"Total unpartitionable cost: {options['unpartitionable_cost']}\n"
+		f"Total internal direct operations: {options['direct_ops']}\n"
+		f"Total internal direct volume: {options['direct_volume']}\n"
+		f"Total internal indirect operations: {options['indirect_ops']}\n"
+		f"Total internal indirect volume: {options['indirect_volume']}\n"
+		f"Total external operations: {options['external_ops']}\n"
+		f"Total external volume: {options['external_volume']}\n"
 		f"Estimated CNOT count: {options['estimated_cnots']}\n"
 	)
+	if post_flag:
+		string += get_original_count(options)
+		string += get_mapping_results(options)
+	print(string)
+	return string
+
+def get_mapping_results(
+	options : dict[str, Any],
+) -> str:
+	path = options["synthesized_qasm_file"]
+	cnots = 0
+	swaps = 0
+	with open(path, "r") as qasmfile:
+		for line in qasmfile:
+			if match("cx", line):
+				cnots += 1
+			elif match("swap", line):
+				swaps += 1
+	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+
+def get_original_count(
+	options : dict[str, Any],
+) -> str:
+	path = options["layout_qasm_file"]
+	cnots = 0
+	with open(path, "r") as qasmfile:
+		for line in qasmfile:
+			if match("cx", line):
+				cnots += 1
+	return f"Original CNOTs: {cnots}\n"

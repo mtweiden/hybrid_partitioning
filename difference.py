@@ -7,12 +7,12 @@ import pickle
 filename = "add_9"
 coupling = "mesh_3_3"
 blocksize = "blocksize_3"
-suffix = "shortestdirect"
+suffix = "shortest-path"
 num_q = 9
-name = f"{filename}_{coupling}_{blocksize}_{suffix}"
+name = f"{filename}_{coupling}_{blocksize}"
 layoutname = f"layout_qasm/{name}"
-synthname  = f"synthesized_qasm/{name}"
-mappedname = f"mapped_qasm/{name}"
+synthname  = f"synthesized_qasm/{name}_{suffix}"
+mappedname = f"mapped_qasm/{name}_{suffix}"
 with open(layoutname, 'r') as f:
     layout = OPENQASM2Language().decode(f.read())
 with open(synthname, 'r') as f:

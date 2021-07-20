@@ -80,9 +80,19 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 		out_qasm.write(new_qasm)
 
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
+	# Make sure to expand the circuit to the number of physical qubits
+	circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+	num_logical_qubits = circ.width()
+	(num_q, _) = get_coupling_map(coupling_map_file, 
+		num_logical_qubits, make_coupling_map_flag=True)
+
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
-			out_qasm.write(in_qasm.read())
+			for line in in_qasm:
+				if match('qreg q\[\d+\];', line):
+					out_qasm.write('qreg q[%d];\n' %(num_q))
+				else:
+					out_qasm.write(line)
 
 
 def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
