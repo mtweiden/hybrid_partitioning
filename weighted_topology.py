@@ -170,7 +170,6 @@ def estimate_cnot_count(
 ) -> int:
 	graph = hybrid_topology.copy() if qudit_group is None else \
 		hybrid_topology.subgraph(qudit_group)
-	relabeled_hybrid = hybrid_topology.copy()
 	estimate = 0
 	for op in operations:
 		dist = shortest_path_length(graph, op[0], op[1], weight="weight")
@@ -213,11 +212,11 @@ def collect_stats(
     direct_volume = get_volume(direct, hybrid_copy)
     indirect_volume = get_volume(indirect, hybrid_copy) 
     external_volume = get_volume(external, hybrid_copy) 
-    direct_cost = estimate_cnot_count(direct, hybrid_copy)
-    indirect_cost = estimate_cnot_count(indirect, hybrid_copy, qudit_group)
-    external_cost = estimate_cnot_count(external, hybrid_copy, qudit_group)
+    #direct_cost = estimate_cnot_count(direct, hybrid_copy)
+    #indirect_cost = estimate_cnot_count(indirect, hybrid_copy, qudit_group)
+    #external_cost = estimate_cnot_count(external, hybrid_copy, qudit_group)
     total_volume = sum([direct_volume, indirect_volume, external_volume])
-    total_cost = sum([direct_cost, indirect_cost, external_cost])
+    #total_cost = sum([direct_cost, indirect_cost, external_cost])
 
     logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
         not in physical_graph.edges and (v,u) not in physical_graph.edges]
@@ -235,7 +234,7 @@ def collect_stats(
         f"    indirect volume : {indirect_volume}\n"
         f"    external ops    : {len(external)}\n"
         f"    external volume : {external_volume}\n"
-		f"ESTIMATED COST -\n  cnots : {total_cost}\n"
+		#f"ESTIMATED COST -\n  cnots : {total_cost}\n"
 		f"SUBTOPOLOGY -\n"
 		f"  number of edges : {len(list(hybrid_copy.edges))}\n"
 		f"  number of logical : {len(logical_edges)}\n"
@@ -256,7 +255,7 @@ def collect_stats(
         options["external_ops"] += len(external)
         options["external_volume"] += external_volume
         options["total_volume"] += total_volume
-        options["estimated_cnots"] += total_cost
+        #options["estimated_cnots"] += total_cost
         if total_ops > options["max_block_length"]:
             options["max_block_length"] = total_ops
         if total_ops < options["min_block_length"] or \
@@ -376,7 +375,7 @@ def add_logical_edges(
 		# Build a MST in the subgraph by adding the lowest density edges first
 		subgraph = physical_topology.subgraph(qudit_group)
 		# Find all disconected subgroups, add the closest
-		reachable = list(shortest_path(subgraph, qudit_group[0]).keys())
+		reachable = list(shortest_path(subgraph, logical_operations[0][0]).keys())
 		op_set = set(logical_operations)
 		# While there are still disconnected subgroups
 		while len(reachable) < len(qudit_group):
@@ -386,6 +385,7 @@ def add_logical_edges(
 			unreachable = list(set(qudit_group) - set(reachable))
 			candidates = []
 			for (u,v) in op_set:
+				print(op_set)
 				if (
 					u in reachable and v in unreachable or
 					v in reachable and u in unreachable

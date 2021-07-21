@@ -57,58 +57,6 @@ def draw_subtopology(
     plot.show()
 
 
-def cnot_histograms(
-    partition_dir : str,
-) -> None:
-    # TODO: Implement support for non-qasm checkpointing
-    block_files = sorted(listdir(partition_dir))
-    block_names = [x.split["/"][-1].split["."][0] for x in block_files]
-    block_names.remove("summary")
-    block_names.remove("structure")
-
-    # Get CNOT counts for each block
-    cnots_list = []
-    for block in block_names:
-        # Get CNOT count
-        cnots = 0
-        with open(f"{partition_dir}/{block}.qasm", "r") as qasmfile:
-            for line in qasmfile:
-                if re.match("cx", line):
-                    cnots += 1
-        cnots_list.append(cnots)
-    
-    # Create a histogram
-    cnots_set = set(cnots_list)
-    #num_bins = len(cnots_set)
-    data_min = min(cnots_set)
-    data_max = max(cnots_set)
-    num_bins = data_max - data_min
-    
-    bins = np.linspace(data_min, data_max, num_bins)
-    plot.xlim([data_min-1, data_max+1])
-    plot.hist(cnots_list, bins=bins)
-
-    name = partition_dir.split("/")[-1].split(".")[0]
-    name = f"figures/{name}.histogram"
-    plot.savefig(name)
-    plot.clf()
-
-
-
-def volume_histograms(
-    partition_dir : str,
-) -> None:
-    # Get internal op volumes for each block
-    with open(f"{partition_dir}/summary.txt", "r") as stats:
-        volume_list = []
-        for line in stats:
-            if vol := re.search("direct volume   : \d+", line):
-                dirvol = int(vol[0])
-            elif vol := re.search("indirect volume : \d+", line):
-                indirvol = int(vol[0])
-                volume_list.append(dirvol + indirvol)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("hybrid_topology", type=str, 
@@ -116,7 +64,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     graph_files = sorted(listdir("subtopology_files/" + args.hybrid_topology))
-    with open("block_files/" + args.hybrid_topology + "/structure.pickle", 
+    graph_files.remove("summary.txt")
+    suffices = ["_mst-density", "_mst-path", "_shortest-path", "_nearest-physical"]
+    name = ""
+    for suffix in suffices:
+        if args.hybrid_topology.endswith(suffix):
+            name = args.hybrid_topology.split(suffix)[0]
+            break
+    with open("block_files/" + name + "/structure.pickle", 
         "rb") as f:
         structure = pickle.load(f)
 
@@ -134,9 +89,7 @@ if __name__ == "__main__":
     for block_num in range(len(graph_files)):
         with open(f"subtopology_files/{args.hybrid_topology}/" 
             + graph_files[block_num], "rb") as f:
-            hybrid_edge_set = list(pickle.load(f))
-        hybrid_topology = Graph()
-        hybrid_topology.add_weighted_edges_from(hybrid_edge_set)
+            hybrid_topology = pickle.load(f)
         draw_subtopology(hybrid_topology, physical_topology, 
             structure[block_num], f"{save_dir}/block_{block_num}")
        
