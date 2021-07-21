@@ -149,13 +149,16 @@ def get_volume(
 	"""
 	Make sure that apply_freqencies has already been called!!
 	"""
+	#ops = set(operations)
+	ops = operations
 	volume = 0
-	for (u,v) in operations:
+	for (u,v) in ops:
 		path = shortest_path(hybrid_topology, u, v)
 		for i in range(len(path) - 1):
-			freq = hybrid_topology[path[i]][path[i+1]]["frequency"]
+			#freq = hybrid_topology[path[i]][path[i+1]]["frequency"]
 			dist = hybrid_topology[path[i]][path[i+1]]["weight"]
-			volume += dist * freq
+			#volume += freq / dist
+			volume += dist
 
 	return volume
 

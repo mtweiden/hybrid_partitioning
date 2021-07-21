@@ -25,7 +25,7 @@ from old_codebase import synthesize
 
 # Enable logging
 import logging
-logging.getLogger('bqskit').setLevel(logging.DEBUG)
+logging.getLogger('bqskit').setLevel(logging.INFO)
 
 
 
@@ -260,4 +260,5 @@ if __name__ == '__main__':
 		#endregion
 	#get_summary(options, block_files, True)
 	print(run_stats(options, post_stats=False))
-	print(run_stats(options, post_stats=True))
+	if not args.partition_only:
+		print(run_stats(options, post_stats=True))
