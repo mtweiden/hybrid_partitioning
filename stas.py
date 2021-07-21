@@ -15,7 +15,8 @@ from mapping import do_layout, do_routing
 from mapping import dummy_layout, dummy_routing
 from weighted_topology import get_hybrid_topology, get_logical_operations
 from util import (
-	load_circuit_structure, 
+	load_circuit_structure,
+	run_stats, 
 	save_block_topology,
 	setup_options,
 	get_summary,
@@ -96,10 +97,9 @@ if __name__ == '__main__':
 	print("="*80)
 	print("Doing logical partitioning on %s..." %(options["target_name"]))
 	print("="*80)
-	# TODO: Errors if directory exists but does not have correct files
-	if exists(f"{options['partition_dir']}/summary.txt"):
+	if exists(f"{options['partition_dir']}/structure.pickle"):
 		print(
-			f"Found existing directory for {options['partition_dir']}"
+			f"Found existing files for {options['partition_dir']}"
 			", skipping partitioning..."
 		)
 	else:
@@ -123,14 +123,9 @@ if __name__ == '__main__':
 			options["checkpoint_as_qasm"]
 		)
 		saver.run(circuit, {})
-		with open(
-			f"{options['partition_dir']}/summary.txt", "w"
-		) as f:
-			f.write("\n")
 	block_files = sorted(listdir(options["partition_dir"]))
 	block_names = []
 	block_files.remove("structure.pickle")
-	block_files.remove("summary.txt")
 	for bf in block_files:
 		if options["checkpoint_as_qasm"]:
 			block_names.append(bf.split(".qasm")[0])
@@ -145,25 +140,32 @@ if __name__ == '__main__':
 	print("="*80)
 	if not exists(options["subtopology_dir"]):
 		mkdir(options["subtopology_dir"])
-	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
-		structure = pickle.load(f)
-	for block_num in range(len(block_files)):
-		print(f"  Analyzing {block_names[block_num]}...")
-		block_path = f"{options['partition_dir']}/{block_files[block_num]}"
-		subtopology = get_hybrid_topology(
-			block_path, 
-			options["coupling_map"], 
-			structure[block_num],
-			options
+	
+	if exists(f"{options['subtopology_dir']}/summary.txt"):
+		print(
+			f"Found existing files for {options['subtopology_dir']},"
+			" skipping subtopology generation..."
 		)
-		subtopology_path = (
-			f"{options['subtopology_dir']}/{block_names[block_num]}"
-			f"_subtopology.pickle"
-		)
-		save_block_topology(subtopology, subtopology_path)
-	summary = get_summary(options, block_files)
-	with open(f"{options['partition_dir']}/summary.txt", "a") as f:
-		f.write(summary)
+	else:
+		with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+			structure = pickle.load(f)
+		for block_num in range(len(block_files)):
+			print(f"  Analyzing {block_names[block_num]}...")
+			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
+			subtopology = get_hybrid_topology(
+				block_path, 
+				options["coupling_map"], 
+				structure[block_num],
+				options
+			)
+			subtopology_path = (
+				f"{options['subtopology_dir']}/{block_names[block_num]}"
+				f"_subtopology.pickle"
+			)
+			save_block_topology(subtopology, subtopology_path)
+		summary = get_summary(options, block_files)
+		with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
+			f.write(summary)
 	#endregion
 
 	# Synthesis
@@ -256,4 +258,6 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	get_summary(options, block_files, True)
+	#get_summary(options, block_files, True)
+	print(run_stats(options, post_stats=False))
+	print(run_stats(options, post_stats=True))

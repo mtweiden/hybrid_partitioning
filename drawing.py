@@ -7,21 +7,16 @@ from __future__ import annotations
 import os
 import pickle
 from posix import listdir
-from typing import Any, Sequence
-from pickle import load, dump
-from weighted_topology import get_unpartitionable_edges
+from typing import Sequence
+
 from networkx import Graph
 import networkx as nx
 import argparse
 import matplotlib.pyplot as plot
 import re
+import numpy as np
 
 
-# TODO: Want to sort edges into 4 categories:
-#   1) Unused physical gate in block
-#   2) Used physical gate in block
-#   3) Non-physical partitionable gate (hard because not in hybrid topology)
-#   4) Unpartitionable gate
 
 def draw_subtopology(
     hybrid_topology : Graph,
@@ -61,10 +56,63 @@ def draw_subtopology(
     nx.draw(colored_subgraph, pos, edge_color=colors, width=widths, labels=label_dict)
     plot.show()
 
+
+def cnot_histograms(
+    partition_dir : str,
+) -> None:
+    # TODO: Implement support for non-qasm checkpointing
+    block_files = sorted(listdir(partition_dir))
+    block_names = [x.split["/"][-1].split["."][0] for x in block_files]
+    block_names.remove("summary")
+    block_names.remove("structure")
+
+    # Get CNOT counts for each block
+    cnots_list = []
+    for block in block_names:
+        # Get CNOT count
+        cnots = 0
+        with open(f"{partition_dir}/{block}.qasm", "r") as qasmfile:
+            for line in qasmfile:
+                if re.match("cx", line):
+                    cnots += 1
+        cnots_list.append(cnots)
+    
+    # Create a histogram
+    cnots_set = set(cnots_list)
+    #num_bins = len(cnots_set)
+    data_min = min(cnots_set)
+    data_max = max(cnots_set)
+    num_bins = data_max - data_min
+    
+    bins = np.linspace(data_min, data_max, num_bins)
+    plot.xlim([data_min-1, data_max+1])
+    plot.hist(cnots_list, bins=bins)
+
+    name = partition_dir.split("/")[-1].split(".")[0]
+    name = f"figures/{name}.histogram"
+    plot.savefig(name)
+    plot.clf()
+
+
+
+def volume_histograms(
+    partition_dir : str,
+) -> None:
+    # Get internal op volumes for each block
+    with open(f"{partition_dir}/summary.txt", "r") as stats:
+        volume_list = []
+        for line in stats:
+            if vol := re.search("direct volume   : \d+", line):
+                dirvol = int(vol[0])
+            elif vol := re.search("indirect volume : \d+", line):
+                indirvol = int(vol[0])
+                volume_list.append(dirvol + indirvol)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("hybrid_topology", type=str, 
-		help="subtopology to draw")
+        help="subtopology to draw")
     args = parser.parse_args()
 
     graph_files = sorted(listdir("subtopology_files/" + args.hybrid_topology))
@@ -79,7 +127,7 @@ if __name__ == "__main__":
     physical_topology = Graph()
     physical_topology.add_weighted_edges_from([(u,v,1) for u,v in physical])
 
-    save_dir = f"graph_drawings/{args.hybrid_topology}"
+    save_dir = f"figures/{args.hybrid_topology}"
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 

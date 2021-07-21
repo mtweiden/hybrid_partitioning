@@ -1,8 +1,10 @@
 from __future__ import annotations
+from posix import listdir
 from re import match
 from typing import Any, Sequence
 import pickle
 import argparse
+from weighted_topology import collect_stats
 
 from networkx.classes.graph import Graph
 from math import sqrt, ceil
@@ -153,27 +155,26 @@ def get_summary(
 	total_ops = sum([options["direct_ops"], options["indirect_ops"], 
 		options["external_ops"]])
 	string = (
-		"Summary:\n"
+		"\nSummary:\n"
 		f"Number of blocks: {len(block_files)}\n"
-		f"Mean block size (cnots): {total_ops/len(block_files)}\n"
+		f"Mean block size (cnots): {total_ops/len(block_files)}\n\n"
 		f"Total internal direct operations: {options['direct_ops']}\n"
 		f"Total internal direct volume: {options['direct_volume']}\n"
 		f"Total internal indirect operations: {options['indirect_ops']}\n"
 		f"Total internal indirect volume: {options['indirect_volume']}\n"
 		f"Total external operations: {options['external_ops']}\n"
 		f"Total external volume: {options['external_volume']}\n"
-		f"Estimated CNOT count: {options['estimated_cnots']}\n"
 	)
 	if post_flag:
-		string += get_original_count(options)
 		string += get_mapping_results(options)
+		string += get_original_count(options)
 	print(string)
 	return string
 
 def get_mapping_results(
 	options : dict[str, Any],
 ) -> str:
-	path = options["synthesized_qasm_file"]
+	path = options["mapped_qasm_file"]
 	cnots = 0
 	swaps = 0
 	with open(path, "r") as qasmfile:
@@ -194,3 +195,85 @@ def get_original_count(
 			if match("cx", line):
 				cnots += 1
 	return f"Original CNOTs: {cnots}\n"
+
+
+def run_stats(
+	options : dict[str, Any],
+	post_stats : bool = False,
+) -> str:
+	# Get the subtopology files
+	sub_files = listdir(options["subtopology_dir"])
+	sub_files.remove(f"summary.txt")
+	sub_files = sorted(sub_files)
+
+	# Get the block files
+	if not post_stats:
+		block_files = listdir(options["partition_dir"])
+		block_files.remove(f"structure.pickle")
+	else:
+		blocks = listdir(options["synthesis_dir"])
+		block_files = []
+		for bf in blocks:
+			if bf.endswith(".qasm"):
+				block_files.append(bf)
+	block_files = sorted(block_files)
+
+	# Init all the needed variables
+	options["direct_ops"]      = 0 
+	options["direct_volume"]   = 0 
+	options["indirect_ops"]    = 0 
+	options["indirect_volume"] = 0 
+	options["external_ops"]    = 0 
+	options["external_volume"] = 0 
+
+	# Get the qudit group
+	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+		structure = pickle.load(f)
+
+	# Run collect_stats on each block
+	for block_num in range(len(block_files)):
+		# Get BQSKIT circuit
+		if not post_stats:
+			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
+				"r") as qasm:
+				circ = OPENQASM2Language().decode(qasm.read())
+		else:
+			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
+				"r") as qasm:
+				circ = OPENQASM2Language().decode(qasm.read())
+		
+		# Get physical graph
+		with open(options["coupling_map"], "rb") as graph:
+			physical = pickle.load(graph)
+		pgraph = Graph()
+		pgraph.add_edges_from(physical)
+
+		# Get hybrid graph
+		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
+			"rb") as graph:
+			hybrid = pickle.load(graph)
+		
+		collect_stats(
+			circ,
+			pgraph,
+			hybrid,
+			structure[block_num],
+			options = options,
+		)
+	if not post_stats:
+		string = "PRE-\n"
+	else:
+		string = "POST-\n"
+	string += (
+		f"    direct ops      : {options['direct_ops']}\n"
+		f"    direct volume   : {options['direct_volume']}\n"
+		f"    indirect ops    : {options['indirect_ops']}\n"
+		f"    indirect volume : {options['indirect_volume']}\n"
+		f"    external ops    : {options['external_ops']}\n"
+		f"    external volume : {options['external_volume']}\n"
+	)
+	if post_stats:
+		string += get_mapping_results(options)
+	else:
+		string += get_original_count(options)
+	return string

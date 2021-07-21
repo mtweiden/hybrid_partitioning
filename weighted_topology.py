@@ -485,7 +485,7 @@ def get_hybrid_topology(
 	stats_str = collect_stats(circuit, physical_graph, hybrid_graph, 
 		qudit_group, options=options)
 	print(stats_str)
-	with open(f"{options['partition_dir']}/summary.txt", "a") as f:
+	with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
 		f.write(f"\n{circuit_file.split('/')[-1]}\n")
 		f.write(stats_str)
 	return hybrid_graph
