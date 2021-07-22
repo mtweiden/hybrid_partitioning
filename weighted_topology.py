@@ -313,12 +313,6 @@ def add_logical_edges(
 				represent the shortest path distance in the physical topology.
 				(default)
 
-			shortest_density (bool): Connect vertices as end points using the
-				shortest direct path in the physical topology. Weights represent
-				the edge's density, or the shortest path distance in the physical 
-				topology / the edge's frequency. This is essentially the 
-				shortest_path scheme but using edge density instead of weight.
-
 			nearest_physical (bool): Add logical edges between members of the
 				qudit_group. Considers the two separate possibly disjoint 
 				connected components containing vertex_a and vertex_b, and 
@@ -375,7 +369,8 @@ def add_logical_edges(
 		# Build a MST in the subgraph by adding the lowest density edges first
 		subgraph = physical_topology.subgraph(qudit_group)
 		# Find all disconected subgroups, add the closest
-		reachable = list(shortest_path(subgraph, logical_operations[0][0]).keys())
+		search_qubit = 0
+		reachable = list(shortest_path(subgraph, qudit_group[0]).keys())
 		op_set = set(logical_operations)
 		# While there are still disconnected subgroups
 		while len(reachable) < len(qudit_group):
@@ -385,7 +380,6 @@ def add_logical_edges(
 			unreachable = list(set(qudit_group) - set(reachable))
 			candidates = []
 			for (u,v) in op_set:
-				print(op_set)
 				if (
 					u in reachable and v in unreachable or
 					v in reachable and u in unreachable
@@ -396,26 +390,36 @@ def add_logical_edges(
 			# If candidates is empty, that means we have two disjoint sets of
 			# qudits that never interact, so we're done
 			if len(candidates) == 0:
-				break
+				if search_qubit >= len(qudit_group) - 1:
+					break
+				else:
+					search_qubit += 1
 			if options["mst_density"]:
 				candidates = sorted(candidates, key=lambda x: x[2]/x[3])
 			else:
 				candidates = sorted(candidates, key=lambda x: x[2])
-			# Frequencies will be added after all logical edges have been added
+			# Frequencies will be added afte all logical edges have been added
 			(u, v, weight, _) = candidates[0]
 			hybrid_graph.add_edge(u, v, weight=weight)
 			subgraph = hybrid_graph.subgraph(qudit_group)
-			reachable = list(shortest_path(subgraph, qudit_group[0]).keys())
+			reachable = list(shortest_path(subgraph, 
+				qudit_group[search_qubit]).keys())
 
 
 	else: # shortest_path or shortest_density assumed
-		for (vertex_a, vertex_b) in external_edges:
-			dist = shortest_path_length(physical_topology, vertex_a, vertex_b)
-			hybrid_graph.add_edge(
-				vertex_a, 
-				vertex_b,
-				weight=dist,
-			)
+		subgraph = physical_topology.subgraph(qudit_group)
+		for op in logical_operations:
+			if not is_internal(physical_topology, qudit_group, op):
+				dist = shortest_path_length(
+					physical_topology,
+					op[0],
+					op[1],
+				)
+				hybrid_graph.add_edge(
+					op[0],
+					op[1],
+					weight=dist
+				)
 
 	return hybrid_graph
 

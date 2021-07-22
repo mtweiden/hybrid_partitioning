@@ -91,5 +91,5 @@ if __name__ == "__main__":
             + graph_files[block_num], "rb") as f:
             hybrid_topology = pickle.load(f)
         draw_subtopology(hybrid_topology, physical_topology, 
-            structure[block_num], f"{save_dir}/block_{block_num}")
+            structure[block_num], f"{save_dir}/{graph_files[block_num]}")
        

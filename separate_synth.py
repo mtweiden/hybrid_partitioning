@@ -24,7 +24,7 @@ if __name__ == '__main__':
 		help="<shortest_path | nearest_physical | mst_path | mst_density>")
 	args = parser.parse_args()
 
-	files = list(listdir(args.partition_dir))
+	files = sorted(list(listdir(args.partition_dir)))
 	files.remove("structure.pickle")
 
 	target_name = args.partition_dir.split("/")[-1]
