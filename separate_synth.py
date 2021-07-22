@@ -8,10 +8,9 @@ if __name__ == '__main__':
 	>>> python separate_synth.py \
 			block_files/qft_5_mesh_3_3_blocksize_3 \
 			2
-			shortest_path
 
 	Synthesizes block_2 of already partitioned 
-	`qft_5_mesh_3_3_blocksize_3_shortest-path` project.
+	`qft_5_mesh_3_3_blocksize_3_qgo` project.
 	"""
 	parser = argparse.ArgumentParser(
 		description="Run synthesis on blocks in the `block_files` directory"
@@ -20,22 +19,12 @@ if __name__ == '__main__':
 		help="path to block files to synthesize")
 	parser.add_argument("block_number", type = int,
 		help="specific block to synthesize")
-	parser.add_argument("edge_scheme", type=str,
-		help="<shortest_path | nearest_physical | mst_path | mst_density>")
 	args = parser.parse_args()
 
 	files = sorted(list(listdir(args.partition_dir)))
 	files.remove("structure.pickle")
 
 	target_name = args.partition_dir.split("/")[-1]
-	if args.edge_scheme == "shortest_path":
-		target_name += "_shortest-path"
-	elif args.edge_scheme == "nearest_physical":
-		target_name += "_nearest-physical"
-	elif args.edge_scheme == "mst_path":
-		target_name += "_mst-path"
-	elif args.edge_scheme == "mst_density":
-		target_name += "_mst-density"
 	block_name = files[args.block_number].split(".qasm")[0]
 
 	qudit_group = load_circuit_structure(args.partition_dir)[args.block_number]
