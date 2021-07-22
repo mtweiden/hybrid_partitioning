@@ -394,6 +394,10 @@ def add_logical_edges(
 					break
 				else:
 					search_qubit += 1
+					subgraph = hybrid_graph.subgraph(qudit_group)
+					reachable = list(shortest_path(subgraph, 
+						qudit_group[search_qubit]).keys())
+					continue
 			if options["mst_density"]:
 				candidates = sorted(candidates, key=lambda x: x[2]/x[3])
 			else:
