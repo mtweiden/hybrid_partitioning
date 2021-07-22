@@ -1,4 +1,5 @@
 from __future__ import annotations
+from os import get_blocking
 from posix import listdir
 from re import match
 from typing import Any, Sequence
@@ -78,27 +79,37 @@ def careful_fold(
 	return folded_circuit
 
 
+def get_coupling_map(
+	qasm_file : str,
+	map_type : str = "mesh",
+) -> tuple[str, int]:
+	if map_type == "mesh":
+		num_q = find_num_qudits(qasm_file)
+		num_p_sqrt = ceil(sqrt(num_q))
+		coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
+		return coupling_map, num_p_sqrt ** 2
+	else:
+		print(f"{map_type} is not an implemented map type.")
+		coupling_map = ""
+		return coupling_map, 0
+
+
 def setup_options(
 	qasm_file : str, 
-	args : argparse.Namespace
+	args : argparse.Namespace,
+	qgo : bool = False,
 ) -> dict[str,Any]:
 
-	num_q = find_num_qudits(qasm_file)
-	num_p_sqrt = ceil(sqrt(num_q))
-	coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
+	coupling_map, num_p = get_coupling_map(qasm_file)
 
 	options = {
 		"blocksize"	 : args.blocksize,
 		"coupling_map"   : coupling_map,
-		"shortest_path" : args.shortest_path,
-		"nearest_physical"  : args.nearest_physical,
-		"mst_path" : args.mst_path,
-		"mst_density" : args.mst_density,
-		"num_synth_procs" : args.num_synth_procs,
-		"num_part_procs" : args.num_part_procs,
+		"num_synth_procs" : 1,
+		"num_part_procs" : 1,
 		"partitioner" : args.partitioner,
 		"checkpoint_as_qasm" : not args.use_pickle,
-		"num_p" : num_p_sqrt ** 2,
+		"num_p" : num_p,
 		"direct_ops" : 0,
 		"indirect_ops" : 0,
 		"external_ops" : 0,
@@ -115,30 +126,12 @@ def setup_options(
 	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
 	target_name += f"_blocksize_{args.blocksize}"
 
+
 	options["layout_qasm_file"] = "layout_qasm/" + target_name
+
+	target_name += "_qgo"
 	options["partition_dir"] = "block_files/" + target_name
 	options["save_part_name"] = target_name
-
-	edge_opts = [
-		args.shortest_path, 
-		args.nearest_physical, 
-		args.mst_path, 
-		args.mst_density, 
-	]
-	if not any(edge_opts):
-		args.shortest_path = True
-
-	suffix = ""
-	if args.shortest_path:
-		suffix += "_shortest-path"
-	elif args.nearest_physical:
-		suffix += "_nearest-physical"
-	elif args.mst_path:
-		suffix += "_mst-path" # Was nearest_logical
-	elif args.mst_density:
-		suffix += "_mst-density"
-
-	target_name += suffix
 	options["target_name"] = target_name
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
@@ -146,6 +139,7 @@ def setup_options(
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 
 	return options
+
 
 def get_summary(
 	options : dict[str, Any], 
@@ -183,7 +177,7 @@ def get_mapping_results(
 				cnots += 1
 			elif match("swap", line):
 				swaps += 1
-	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+	return f"Mapping CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
 
 def get_original_count(
 	options : dict[str, Any],
@@ -195,6 +189,17 @@ def get_original_count(
 			if match("cx", line):
 				cnots += 1
 	return f"Original CNOTs: {cnots}\n"
+
+def get_synthesis_count(
+	options : dict[str, Any],
+) -> str:
+	path = options["synthesized_qasm_file"]
+	cnots = 0
+	with open(path, "r") as qasmfile:
+		for line in qasmfile:
+			if match("cx", line):
+				cnots += 1
+	return f"Synthesis CNOTs: {cnots}\n"
 
 
 def run_stats(
@@ -247,16 +252,11 @@ def run_stats(
 			physical = pickle.load(graph)
 		pgraph = Graph()
 		pgraph.add_edges_from(physical)
-
-		# Get hybrid graph
-		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
-			"rb") as graph:
-			hybrid = pickle.load(graph)
 		
 		collect_stats(
 			circ,
 			pgraph,
-			hybrid,
+			pgraph,
 			structure[block_num],
 			options = options,
 		)
@@ -272,8 +272,10 @@ def run_stats(
 		f"    external ops    : {options['external_ops']}\n"
 		f"    external volume : {options['external_volume']}\n"
 	)
-	if post_stats:
+	if not post_stats:
+		string += get_original_count(options)
 		string += get_mapping_results(options)
 	else:
-		string += get_original_count(options)
+		string += get_synthesis_count(options)
+
 	return string

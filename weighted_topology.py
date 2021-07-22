@@ -155,10 +155,7 @@ def get_volume(
 	for (u,v) in ops:
 		path = shortest_path(hybrid_topology, u, v)
 		for i in range(len(path) - 1):
-			#freq = hybrid_topology[path[i]][path[i+1]]["frequency"]
-			dist = hybrid_topology[path[i]][path[i+1]]["weight"]
-			#volume += freq / dist
-			volume += dist
+			volume += 1
 
 	return volume
 
@@ -212,11 +209,7 @@ def collect_stats(
     direct_volume = get_volume(direct, hybrid_copy)
     indirect_volume = get_volume(indirect, hybrid_copy) 
     external_volume = get_volume(external, hybrid_copy) 
-    #direct_cost = estimate_cnot_count(direct, hybrid_copy)
-    #indirect_cost = estimate_cnot_count(indirect, hybrid_copy, qudit_group)
-    #external_cost = estimate_cnot_count(external, hybrid_copy, qudit_group)
     total_volume = sum([direct_volume, indirect_volume, external_volume])
-    #total_cost = sum([direct_cost, indirect_cost, external_cost])
 
     logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
         not in physical_graph.edges and (v,u) not in physical_graph.edges]

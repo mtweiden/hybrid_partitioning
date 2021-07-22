@@ -128,8 +128,7 @@ def synthesize(
 		# TODO: Add weighted edges to synthesis function
 		q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
 		sub_edges = [
-			(q_map[e[0]], q_map[e[1]], subtopology[e[0]][e[1]]["weight"]) 
-			for e in subtopology.edges
+			(q_map[e[0]], q_map[e[1]], 1) for e in subtopology.edges
 		]
 		# Load circuit
 		subcircuit = load_block_circuit(block_path, options)
