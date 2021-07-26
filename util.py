@@ -129,10 +129,12 @@ def setup_options(
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
 	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
 	target_name += f"_blocksize_{args.blocksize}"
+
+	options["layout_qasm_file"] = "layout_qasm/" + target_name
+
 	if partitioner != "scan":
 		target_name += f"_{partitioner}"
 
-	options["layout_qasm_file"] = "layout_qasm/" + target_name
 	options["partition_dir"] = "block_files/" + target_name
 	options["save_part_name"] = target_name
 
