@@ -9,6 +9,7 @@ from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
+from bqskit.compiler.passes.partitioning.greedy import GreedyPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing
@@ -37,31 +38,41 @@ if __name__ == '__main__':
 		" based on the hybrid logical-physical topology scheme"
 	)
 	parser.add_argument("qasm_file", type=str, help="file to synthesize")
-	parser.add_argument("--blocksize", dest="blocksize", action="store",
-		nargs='?', default=3, type=int, help="synthesis block size")
-	parser.add_argument("--shortest_path", action="store_true",
-		help="add logical edges using shortest_path scheme")
-	parser.add_argument("--nearest_physical", action="store_true",
-		help="add logical edges using nearest_physical scheme")
-	parser.add_argument("--mst_path", action="store_true",
-		help="add logical edges using mst_path scheme")
-	parser.add_argument("--mst_density", action="store_true",
-		help="add logical edges using mst_density scheme")
-	parser.add_argument("--num_synth_procs", dest="num_synth_procs", 
-		action="store", nargs="?", default=1, type=int, 
-		help="number of blocks to synthesize at once")
-	parser.add_argument("--num_part_procs", dest="num_part_procs", 
-		action="store", nargs="?", default=1, type=int, 
-		help="number of processes while doing partitioning")
-	parser.add_argument("--partitioner", dest="partitioner", 
-		action="store", nargs="?", default="scan", type=str, 
-		help="partitioner to use")
-	parser.add_argument("--dummy_map", action="store_true",
-		help="turn off layout and routing")
-	parser.add_argument("--partition_only", action="store_true",
-		help="skip synthesis and routing")
-	parser.add_argument("--use_pickle", action="store_true",
-		help="store intermediate files as pickle instead of qasm")
+	parser.add_argument(
+		"--blocksize", dest="blocksize", action="store", nargs='?', default=3,
+		type=int, help="synthesis block size"
+	)
+	parser.add_argument(
+		"--shortest_path", action="store_true",
+		help="add logical edges using shortest_path scheme"
+	)
+	parser.add_argument(
+		"--nearest_physical", action="store_true",
+		help="add logical edges using nearest_physical scheme"
+	)
+	parser.add_argument(
+		"--mst_path", action="store_true",
+		help="add logical edges using mst_path scheme"
+	)
+	parser.add_argument(
+		"--mst_density", action="store_true",
+		help="add logical edges using mst_density scheme"
+	)
+	parser.add_argument(
+		"--partitioner", dest="partitioner", action="store", nargs="?", 
+		default="scan", type=str, help="partitioner to use [scan | greedy]"
+	)
+	parser.add_argument(
+		"--dummy_map", action="store_true", help="turn off layout and routing"
+	)
+	parser.add_argument(
+		"--partition_only", action="store_true",
+		help="skip synthesis and routing"
+	)
+	parser.add_argument("--coupling_map", dest="map_type", action="store",
+		default="mesh", type=str,
+		help="[mesh | linear]"
+	)
 	args = parser.parse_args()
 	#endregion
 
@@ -111,12 +122,16 @@ if __name__ == '__main__':
 			options["num_p"], 
 			machine_edges
 		)
-		partitioner = ScanPartitioner(args.blocksize)
+		if options["partitioner"] == "greedy":
+			partitioner = GreedyPartitioner(args.blocksize)
+		else:
+			partitioner = ScanPartitioner(args.blocksize)
 		data = {
 			"machine_model": logical_machine,
 			"keep_idle_qudits": True
 		}
 		partitioner.run(circuit, data)
+
 		saver = SaveIntermediatePass(
 			"block_files/", 
 			options["save_part_name"],
@@ -182,42 +197,16 @@ if __name__ == '__main__':
 	elif not args.partition_only:
 		synthesized_circuit = Circuit(options["num_p"])
 		structure = load_circuit_structure(options["partition_dir"])
-		block_list = list(range(0, len(block_files), 
-			options["num_synth_procs"]))
-
-		for block_num in block_list:
-			processes = []
-			for block_offset in range(options["num_synth_procs"]):
-				# Do set ups
-				block_number = block_num + block_offset
-				print(
-					f"    Synthesizing block {block_number+1}"
-					f"/{len(block_files)}"
-				)
-				if block_number >= len(block_files):
-					break
-				# If uniprocessing, just call synthesis function
-				if options["num_synth_procs"] == 1:
-					synthesize(
-						block_name=block_names[block_number],
-						qudit_group=structure[block_number],
-						options=options,
-					)
-				# If multiprocessing, launch new processes
-				else:
-					proc = Process(
-						target=synthesize,
-						args=(
-							block_number,
-							structure[block_number],
-							options
-						)
-					)
-					processes.append(proc)
-					proc.start()
-			for proc in processes:
-				proc.join()
-					
+		block_list = list(range(0, len(block_files)))
+		for block_number in block_list:
+			print(
+				f"    Synthesizing block {block_number+1}/{len(block_files)}"
+			)
+			synthesize(
+				block_name=block_names[block_number],
+				qudit_group=structure[block_number],
+				options=options,
+			)
 
 		# Format QASM as subcircuit & add to circuit
 		for block_num in range(len(block_files)):

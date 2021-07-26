@@ -85,7 +85,17 @@ def setup_options(
 
 	num_q = find_num_qudits(qasm_file)
 	num_p_sqrt = ceil(sqrt(num_q))
-	coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
+
+	# Select coupling map
+	valid_map_types = ["mesh", "linear"]
+	if not args.map_type in valid_map_types:
+		raise RuntimeError(
+			f"{args.map_type} is not a valid coupling map type."
+		)
+
+	coupling_map = (
+		f"coupling_maps/{args.map_type}_{num_p_sqrt}_{num_p_sqrt}"
+	)
 
 	options = {
 		"blocksize"	 : args.blocksize,
@@ -94,10 +104,8 @@ def setup_options(
 		"nearest_physical"  : args.nearest_physical,
 		"mst_path" : args.mst_path,
 		"mst_density" : args.mst_density,
-		"num_synth_procs" : args.num_synth_procs,
-		"num_part_procs" : args.num_part_procs,
 		"partitioner" : args.partitioner,
-		"checkpoint_as_qasm" : not args.use_pickle,
+		"checkpoint_as_qasm" : True,
 		"num_p" : num_p_sqrt ** 2,
 		"direct_ops" : 0,
 		"indirect_ops" : 0,

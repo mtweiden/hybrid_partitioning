@@ -41,8 +41,7 @@ def cnot_histograms(
     data_max = max(cnots_set)
     
     counts = [cnots_list.count(x) for x in cnots_set]
-    upper = max(counts) + 1
-    plot.yticks(range(upper + 1))
+    plot.yticks(sorted(list(set(counts))))
 
     plot.xlabel("Block CNOT Count")
     bins = range(data_min, data_max+2)
@@ -73,12 +72,9 @@ def volume_histograms(
 
     # Create a histogram
     volume_set = set(volume_list)
-    data_min = min(volume_set)
-    data_max = max(volume_set)
     
     counts = [volume_list.count(x) for x in volume_set]
-    upper = max(counts) + 1
-    plot.yticks(range(upper + 1))
+    plot.yticks(sorted(list(set(counts))))
 
     plot.xlabel("Block Internal Volume")
     #bins = range(data_min, data_max+2)

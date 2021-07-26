@@ -73,12 +73,12 @@ def call_old_codebase_leap(
 	# Run
 	project.run()
 	# Post processing
-	#project.post_process(
-	#	post_processing.LEAPReoptimizing_PostProcessor(),
-	#	solver = multistart_solvers.MultiStart_Solver(8),
-	#	parallelizer = parallelizers.ProcessPoolParallelizer,
-	#	weight_limit = 5
-	#)
+	project.post_process(
+		post_processing.LEAPReoptimizing_PostProcessor(),
+		solver = multistart_solvers.MultiStart_Solver(8),
+		parallelizer = parallelizers.ProcessPoolParallelizer,
+		weight_limit = 5
+	)
 	qasm = project.assemble(
 		block_name,
 		assembler=assemblers.ASSEMBLER_IBMOPENQASM
@@ -140,7 +140,6 @@ def synthesize(
 			unitary,
 			sub_edges,
 			synth_dir,
-			options["num_synth_procs"],
 		)
 		with open(f"{synth_dir}.qasm", "w") as f:
 			f.write(subcircuit_qasm)
