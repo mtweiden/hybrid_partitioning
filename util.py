@@ -92,10 +92,17 @@ def setup_options(
 		raise RuntimeError(
 			f"{args.map_type} is not a valid coupling map type."
 		)
-
 	coupling_map = (
 		f"coupling_maps/{args.map_type}_{num_p_sqrt}_{num_p_sqrt}"
 	)
+
+	# Select partitioner
+	valid_partitioners = ["scan", "greedy"]
+	if not args.partitioner in valid_partitioners:
+		raise RuntimeError(
+			f"{args.partitioner} is not a valid partitioner type."
+		)
+	partitioner = args.partitioner
 
 	options = {
 		"blocksize"	 : args.blocksize,
@@ -104,7 +111,7 @@ def setup_options(
 		"nearest_physical"  : args.nearest_physical,
 		"mst_path" : args.mst_path,
 		"mst_density" : args.mst_density,
-		"partitioner" : args.partitioner,
+		"partitioner" : partitioner,
 		"checkpoint_as_qasm" : True,
 		"num_p" : num_p_sqrt ** 2,
 		"direct_ops" : 0,
@@ -122,6 +129,8 @@ def setup_options(
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
 	target_name += "_" + coupling_map.split("coupling_maps/")[-1]
 	target_name += f"_blocksize_{args.blocksize}"
+	if partitioner != "scan":
+		target_name += f"_{partitioner}"
 
 	options["layout_qasm_file"] = "layout_qasm/" + target_name
 	options["partition_dir"] = "block_files/" + target_name
