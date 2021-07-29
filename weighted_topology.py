@@ -43,10 +43,31 @@ def is_same(a : Sequence[int], b : Sequence[int]) -> bool:
 def get_logical_operations(
 	circuit: Circuit,
 	qudit_group: Sequence[int] | None = None,
-) -> Tuple[Sequence[Sequence[int]], Dict[Tuple[int,int],int]] \
-	| Sequence[Sequence[int]]:
+) -> Sequence[Sequence[int]]:
 	logical_operations = []
+	for op in circuit:
+		if len(op.location) > 1:
+			# TODO: handle multi qubit gates
+			#for edge in combinations(op.location, 2):
+			#	logical_operations.append(edge)
+			if qudit_group is not None:
+				a = min([qudit_group[op.location[0]], 
+					qudit_group[op.location[1]]])
+				b = max([qudit_group[op.location[0]], 
+					qudit_group[op.location[1]]])
+			else:
+				a = min([op.location[0], op.location[1]])
+				b = max([op.location[0], op.location[1]])
+			logical_operations.append((a,b))
+	return logical_operations
+
+
+def get_frequencies(
+	circuit: Circuit,
+	qudit_group: Sequence[int] | None = None,
+) -> Dict[Tuple, int]:
 	frequencies = {}
+	logical_operations = []
 	for op in circuit:
 		if len(op.location) > 1:
 			# TODO: handle multi qubit gates
@@ -64,53 +85,84 @@ def get_logical_operations(
 	to_count = set(logical_operations)
 	for edge in to_count:
 		frequencies[edge] = logical_operations.count(edge)
-	return (logical_operations, frequencies)
+	return frequencies
 
 
 def is_internal(
 	physical_topology: Graph,
 	qudit_group: Sequence[int],
-	edge: tuple[int]
+	edge: tuple[int],
+	blocksize : int | None = None,
 ) -> bool:
-	subgraph = physical_topology.subgraph(qudit_group)
-	try:
-		return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
-	except networkx.exception.NetworkXNoPath:
-		return False
+	# Check for a path in the subgraph if no blocksize is provided
+	if blocksize is None:
+		subgraph = physical_topology.subgraph(qudit_group)
+		try:
+			return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
+		except networkx.exception.NetworkXNoPath:
+			return False
+	else:
+		# Check for a path in the subgraph if no qudits are idle
+		if blocksize == len(qudit_group):
+			subgraph = physical_topology.subgraph(qudit_group)
+			try:
+				return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
+			except networkx.exception.NetworkXNoPath:
+				return False
+		# Check that the shortest path is < the blocksize otherwise
+		else:
+			return (
+				shortest_path_length(physical_topology,edge[0],edge[1]) 
+				< blocksize
+			)
 
 
 def get_external_edges(
 	logical_operations : Sequence[Sequence[int]],
 	physical_topology : Graph,
 	qudit_group : Sequence[int],
+	blocksize : int | None = None,
 ) -> Sequence[Sequence[int]]:
 	"""
 	Gates that require a logical edge to be inserted into the hybrid topology.
 	"""
-	return [
-		(u,v) for (u,v) in logical_operations if not 
-		is_internal(physical_topology, qudit_group, (u,v))
-	]
+	if blocksize is None:
+		return [
+			(u,v) for (u,v) in logical_operations if not 
+			is_internal(physical_topology, qudit_group, (u,v))
+		]
+	else:
+		return [
+			(u,v) for (u,v) in logical_operations if not 
+			is_internal(physical_topology, qudit_group, (u,v), blocksize)
+		]
 
 
 def get_indirect_edges(
 	logical_operations : Sequence[Sequence[int]],
 	physical_topology : Graph,
 	qudit_group : Sequence[int],
+	blocksize : int | None = None,
 ) -> Sequence[Sequence[int]]:
 	"""
 	Gates that can be implemented on physical edges but non adjacent vertices.
 	"""
-	physical = get_direct_edges(logical_operations, physical_topology)
-	internal = [
-		edge for edge in logical_operations if 
-		is_internal(physical_topology, qudit_group, edge)
-	]
-	non_physical = [
+	direct = get_direct_edges(logical_operations, physical_topology)
+	if blocksize is None:
+		internal = [
+			edge for edge in logical_operations if 
+			is_internal(physical_topology, qudit_group, edge)
+		]
+	else:
+		internal = [
+			edge for edge in logical_operations if 
+			is_internal(physical_topology, qudit_group, edge, blocksize)
+		]
+	indirect = [
 		(u,v) for (u,v) in internal if 
-		(u,v) not in physical and (v,u) not in physical
+		(u,v) not in direct and (v,u) not in direct
 	]
-	return non_physical
+	return indirect 
 
 
 def get_direct_edges(
@@ -190,79 +242,83 @@ def estimate_cnot_count(
 
 
 def collect_stats(
-    circuit : Circuit,
-    physical_graph : Graph, 
-    hybrid_graph : Graph,
-    qudit_group : Sequence[int],
-    blocksize : int | None = None,
+	circuit : Circuit,
+	physical_graph : Graph, 
+	hybrid_graph : Graph,
+	qudit_group : Sequence[int],
+	blocksize : int | None = None,
 	options : dict[str, Any] | None = None,
 ) -> str:
-    # NOTE: may break if idle qudit are removed
-    hybrid_copy = hybrid_graph.copy()
-    blocksize = len(qudit_group) if blocksize is None else blocksize
-    logical_ops, freqs = get_logical_operations(circuit, qudit_group)
-    hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
+	# NOTE: may break if idle qudit are removed
+	hybrid_copy = hybrid_graph.copy()
+	blocksize = len(qudit_group) if blocksize is None else blocksize
+	logical_ops = get_logical_operations(circuit, qudit_group)
+	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
 
-    direct = get_direct_edges(logical_ops, physical_graph)
-    indirect = get_indirect_edges(logical_ops,
-        physical_graph, qudit_group)
-    external = get_external_edges(logical_ops,
-        physical_graph, qudit_group)
+	direct = get_direct_edges(logical_ops, physical_graph)
+	if options is not None:
+		indirect = get_indirect_edges(
+			logical_ops, physical_graph, qudit_group, options["blocksize"]
+		)
+		external = get_external_edges(
+			logical_ops, physical_graph, qudit_group, options["blocksize"]
+		)
+	else:
+		indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
+		external = get_external_edges(logical_ops, physical_graph, qudit_group)
 
-    direct_volume = get_volume(direct, hybrid_copy)
-    indirect_volume = get_volume(indirect, hybrid_copy) 
-    external_volume = get_volume(external, hybrid_copy) 
-    #direct_cost = estimate_cnot_count(direct, hybrid_copy)
-    #indirect_cost = estimate_cnot_count(indirect, hybrid_copy, qudit_group)
-    #external_cost = estimate_cnot_count(external, hybrid_copy, qudit_group)
-    total_volume = sum([direct_volume, indirect_volume, external_volume])
-    #total_cost = sum([direct_cost, indirect_cost, external_cost])
 
-    logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
-        not in physical_graph.edges and (v,u) not in physical_graph.edges]
+	direct_volume = get_volume(direct, hybrid_copy)
+	indirect_volume = get_volume(indirect, hybrid_copy) 
+	external_volume = get_volume(external, hybrid_copy) 
+	total_volume = sum([direct_volume, indirect_volume, external_volume])
 
-    stats = (
+	logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
+		not in physical_graph.edges and (v,u) not in physical_graph.edges]
+	
+	subgraph = hybrid_copy.subgraph(qudit_group)
+	path_sum = sum([subgraph[x[0]][x[1]]["weight"] for x in subgraph.edges])
+
+	active_qudits = circuit.get_active_qudits()
+
+	stats = (
 		f"INFO -\n"
 		f"  blocksize: {blocksize}\n"
-        f"  block: {qudit_group}\n"
+		f"  block: {qudit_group}\n"
+		f"  active: {len(active_qudits)}\n"
+		f"  cnot count: {len(logical_ops)}\n"
 		f"OPERATION COUNTS & VOLUME-\n"
-        f"  total distinct operations : {len(logical_ops)}\n"
-        f"  total block volume : {total_volume}\n"
-        f"    direct ops      : {len(direct)}\n"
-        f"    direct volume   : {direct_volume}\n"
-        f"    indirect ops    : {len(indirect)}\n"
-        f"    indirect volume : {indirect_volume}\n"
-        f"    external ops    : {len(external)}\n"
-        f"    external volume : {external_volume}\n"
-		#f"ESTIMATED COST -\n  cnots : {total_cost}\n"
+#		f"  total distinct operations : {len(logical_ops)}\n"
+#		f"  total block volume : {total_volume}\n"
+		f"	direct ops	  : {len(direct)}\n"
+#		f"	direct volume   : {direct_volume}\n"
+		f"	indirect ops	: {len(indirect)}\n"
+		f"	indirect volume : {indirect_volume}\n"
+		f"	external ops	: {len(external)}\n"
+		f"	external volume : {external_volume}\n"
 		f"SUBTOPOLOGY -\n"
-		f"  number of edges : {len(list(hybrid_copy.edges))}\n"
+		f"  number of edges : {len(list(subgraph.edges))}\n"
 		f"  number of logical : {len(logical_edges)}\n"
-    )
-	# TODO: get freqency from indirect and external operations, not just
-	# direct edges
-	# TODO: how to get distance when logical edges sometimes use density?
-    #for edge in hybrid_copy.edges:
-    #    estr = f"({edge[0]}, {edge[1]}) - distance: {} - frequency: {}\n"
+		f"  path sum : {path_sum}\n"
+	)
 
-    total_ops = sum([len(direct), len(indirect), len(external)])
+	total_ops = sum([len(direct), len(indirect), len(external)])
 
-    if options is not None:
-        options["direct_ops"] += len(direct)
-        options["direct_volume"] += direct_volume
-        options["indirect_ops"] += len(indirect)
-        options["indirect_volume"] += indirect_volume
-        options["external_ops"] += len(external)
-        options["external_volume"] += external_volume
-        options["total_volume"] += total_volume
-        #options["estimated_cnots"] += total_cost
-        if total_ops > options["max_block_length"]:
-            options["max_block_length"] = total_ops
-        if total_ops < options["min_block_length"] or \
+	if options is not None:
+		options["direct_ops"] += len(direct)
+		options["direct_volume"] += direct_volume
+		options["indirect_ops"] += len(indirect)
+		options["indirect_volume"] += indirect_volume
+		options["external_ops"] += len(external)
+		options["external_volume"] += external_volume
+		options["total_volume"] += total_volume
+		if total_ops > options["max_block_length"]:
+			options["max_block_length"] = total_ops
+		if total_ops < options["min_block_length"] or \
 			options["min_block_length"] == 0:
-            options["min_block_length"] = total_ops
+			options["min_block_length"] = total_ops
 
-    return stats
+	return stats
 
 
 def cost_function(distance: int, frequency: int) -> float:
@@ -296,7 +352,7 @@ def add_logical_edges(
 
 	Args:
 		logical_operations (list[tuple[int]]): The logical operations that may
-		    require the addition of logical edges.
+			require the addition of logical edges.
 
 		frequencies (Dict[Tuple[int,int], int]): The number of times each edge
 			appears in the circuit.
@@ -341,7 +397,7 @@ def add_logical_edges(
 	"""
 	hybrid_graph = hybrid_topology.copy()
 	external_edges = get_external_edges(logical_operations, 
-		physical_topology, qudit_group)
+		physical_topology, qudit_group, options["blocksize"])
 	
 	if options["nearest_physical"]:
 		# Shortest path between vertices physically connected to vertex_a and
@@ -413,7 +469,9 @@ def add_logical_edges(
 	else: # shortest_path or shortest_density assumed
 		subgraph = physical_topology.subgraph(qudit_group)
 		for op in logical_operations:
-			if not is_internal(physical_topology, qudit_group, op):
+			if not is_internal(physical_topology, qudit_group, op, 
+				options["blocksize"]):
+
 				dist = shortest_path_length(
 					physical_topology,
 					op[0],
@@ -480,7 +538,8 @@ def get_hybrid_topology(
 	else:
 		with open(circuit_file, 'rb') as f:
 			circuit = pickle.load(f)
-	logical_ops, freqs = get_logical_operations(circuit, qudit_group)
+	logical_ops = get_logical_operations(circuit, qudit_group)
+	freqs = get_frequencies(circuit, qudit_group)
 
 	# Add edges to graph
 	hybrid_graph = add_logical_edges(

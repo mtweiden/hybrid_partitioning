@@ -117,19 +117,21 @@ if __name__ == '__main__':
 		with open(options["layout_qasm_file"], 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
 		
-		machine_edges, _ = get_logical_operations(circuit)
-		logical_machine = MachineModel(
-			options["num_p"], 
-			machine_edges
-		)
 		if options["partitioner"] == "greedy":
 			partitioner = GreedyPartitioner(args.blocksize)
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
+
+		machine_edges = get_logical_operations(circuit)
+		logical_machine = MachineModel(
+			options["num_p"], 
+			machine_edges
+		)
 		data = {
 			"machine_model": logical_machine,
 			"keep_idle_qudits": True
 		}
+
 		partitioner.run(circuit, data)
 
 		saver = SaveIntermediatePass(
@@ -138,6 +140,7 @@ if __name__ == '__main__':
 			options["checkpoint_as_qasm"]
 		)
 		saver.run(circuit, {})
+
 	block_files = sorted(listdir(options["partition_dir"]))
 	block_names = []
 	block_files.remove("structure.pickle")
@@ -191,8 +194,7 @@ if __name__ == '__main__':
 	if exists(options['synthesized_qasm_file']):
 		print(
 			f"Found existing file for {options['synthesized_qasm_file']}, "
-			"skipping synthesis\n",
-			"="*80
+			"skipping synthesis\n", "="*80
 		)
 	elif not args.partition_only:
 		synthesized_circuit = Circuit(options["num_p"])

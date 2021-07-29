@@ -18,10 +18,10 @@ if __name__ == '__main__':
 	)
 	parser.add_argument("partition_dir", type=str, 
 		help="path to block files to synthesize")
-	parser.add_argument("block_number", type = int,
-		help="specific block to synthesize")
 	parser.add_argument("edge_scheme", type=str,
 		help="<shortest_path | nearest_physical | mst_path | mst_density>")
+	parser.add_argument("block_number", type = int,
+		help="specific block to synthesize")
 	args = parser.parse_args()
 
 	files = sorted(list(listdir(args.partition_dir)))
