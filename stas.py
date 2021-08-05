@@ -3,7 +3,6 @@ from os.path import exists
 from os import mkdir, listdir
 import argparse
 import pickle
-from multiprocessing import Process
 
 from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
@@ -14,11 +13,12 @@ from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing
 from mapping import dummy_layout, dummy_routing
-from weighted_topology import get_hybrid_topology, get_logical_operations
+from weighted_topology import get_best_qudit_group, get_hybrid_topology, get_logical_operations, run_stats
 from util import (
 	load_circuit_structure,
-	run_stats, 
+	rewrite_block,
 	save_block_topology,
+	save_circuit_structure,
 	setup_options,
 	get_summary,
 )
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	)
 	parser.add_argument(
 		"--partitioner", dest="partitioner", action="store", nargs="?", 
-		default="scan", type=str, help="partitioner to use [scan | greedy]"
+		default="greedy", type=str, help="partitioner to use [scan | greedy]"
 	)
 	parser.add_argument(
 		"--dummy_map", action="store_true", help="turn off layout and routing"
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 		)
 		data = {
 			"machine_model": logical_machine,
-			"keep_idle_qudits": True
+			#"keep_idle_qudits": True
 		}
 
 		partitioner.run(circuit, data)
@@ -165,13 +165,29 @@ if __name__ == '__main__':
 			" skipping subtopology generation..."
 		)
 	else:
-		with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
-			structure = pickle.load(f)
+		structure = load_circuit_structure(options["partition_dir"])
 		for block_num in range(len(block_files)):
 			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
+
+			# Check if qudits should be added to the block
+			if len(structure[block_num]) < options["blocksize"]:
+				old_group = structure[block_num]
+				num_to_add = options['blocksize'] - len(old_group)
+				print(f"  Adding {num_to_add} qudits to the block")
+				new_group = get_best_qudit_group(
+					block_path,
+					structure[block_num],
+					options,
+				)
+				# Save new block qasm
+				rewrite_block(block_path, old_group, new_group, options)
+				# Save new qudit group structure
+				structure[block_num] = new_group
+				save_circuit_structure(options["partition_dir"], structure)
+
 			subtopology = get_hybrid_topology(
-				block_path, 
+				block_path,
 				options["coupling_map"], 
 				structure[block_num],
 				options

@@ -4,17 +4,26 @@ logical-physical topology.
 """
 
 from __future__ import annotations
+import itertools
+from logging import log
 import pickle
+from posix import listdir
 import re
 from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 from pickle import load
+
+from networkx.generators import intersection
+
+from util import get_mapping_results, get_original_count, load_block_circuit
 from networkx import Graph, shortest_path_length
 import networkx
+from networkx.algorithms import hybrid
 from networkx.algorithms.shortest_paths.generic import shortest_path
 from itertools import combinations
 from bqskit import Circuit
 from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
+from networkx.generators.ego import ego_graph
 
 
 def check_multi(qasm_line) -> tuple[int] | None:
@@ -530,14 +539,7 @@ def get_hybrid_topology(
 	# Build the hybrid topology starting with physical edges
 	hybrid_graph = physical_graph.subgraph(qudit_group)
 
-	# QASM format
-	if options['checkpoint_as_qasm']:
-		with open(circuit_file, 'r') as f:
-			circuit = OPENQASM2Language().decode(f.read())
-	# Pickle format
-	else:
-		with open(circuit_file, 'rb') as f:
-			circuit = pickle.load(f)
+	circuit = load_block_circuit(circuit_file, options)
 	logical_ops = get_logical_operations(circuit, qudit_group)
 	freqs = get_frequencies(circuit, qudit_group)
 
@@ -559,3 +561,135 @@ def get_hybrid_topology(
 		f.write(f"\n{circuit_file.split('/')[-1]}\n")
 		f.write(stats_str)
 	return hybrid_graph
+
+
+def get_best_qudit_group(
+	subcircuit_path : Circuit,
+	old_qudit_group : Sequence[int],
+	options : dict[str, Any],
+) -> Sequence[int]:
+	"""
+	Return the qudit group that yields the maximum number of internal ops. If 
+	the original qudit_group supplied is of length n and n < blocksize, then
+	the first n qudits will be the original qudits.	
+	"""
+	num_to_add = options["blocksize"] - len(old_qudit_group)
+	if num_to_add == 0:
+		return old_qudit_group
+	
+	subcircuit = load_block_circuit(subcircuit_path, options)
+
+	# Get the physical topology
+	with open(options["coupling_map"], 'rb') as f:
+		physical_edge_set = load(f)
+	physical_graph = Graph()
+	physical_graph.add_edges_from(list(physical_edge_set))
+
+	log_ops = get_logical_operations(subcircuit, old_qudit_group)
+	if len(log_ops) == 0:
+		return old_qudit_group
+
+	candidates = []
+	for insider in old_qudit_group:
+		candidates.extend(list(
+			ego_graph(physical_graph, insider, num_to_add).nodes
+		))
+	candidates = [x for x in candidates if x not in old_qudit_group]
+
+	candidate_tuples = itertools.combinations(candidates, num_to_add)
+
+	best_score = -1
+	best_group = []
+	for candi in candidate_tuples:
+		new_group = [x for x in old_qudit_group]
+		for x in sorted(candi):
+			new_group.append(x)
+		direct = get_direct_edges(log_ops, physical_graph)
+		indirect = get_indirect_edges(log_ops, physical_graph, new_group)
+		if len(direct) + len(indirect) > best_score:
+			best_score = len(direct) + len(indirect)
+			best_group = new_group
+
+	return sorted(best_group)
+
+
+def run_stats(
+	options : dict[str, Any],
+	post_stats : bool = False,
+) -> str:
+	# Get the subtopology files
+	sub_files = listdir(options["subtopology_dir"])
+	sub_files.remove(f"summary.txt")
+	sub_files = sorted(sub_files)
+
+	# Get the block files
+	if not post_stats:
+		block_files = listdir(options["partition_dir"])
+		block_files.remove(f"structure.pickle")
+	else:
+		blocks = listdir(options["synthesis_dir"])
+		block_files = []
+		for bf in blocks:
+			if bf.endswith(".qasm"):
+				block_files.append(bf)
+	block_files = sorted(block_files)
+
+	# Init all the needed variables
+	options["direct_ops"]      = 0 
+	options["direct_volume"]   = 0 
+	options["indirect_ops"]    = 0 
+	options["indirect_volume"] = 0 
+	options["external_ops"]    = 0 
+	options["external_volume"] = 0 
+
+	# Get the qudit group
+	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+		structure = pickle.load(f)
+
+	# Run collect_stats on each block
+	for block_num in range(len(block_files)):
+		# Get BQSKIT circuit
+		if not post_stats:
+			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
+				"r") as qasm:
+				circ = OPENQASM2Language().decode(qasm.read())
+		else:
+			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
+				"r") as qasm:
+				circ = OPENQASM2Language().decode(qasm.read())
+		
+		# Get physical graph
+		with open(options["coupling_map"], "rb") as graph:
+			physical = pickle.load(graph)
+		pgraph = Graph()
+		pgraph.add_edges_from(physical)
+
+		# Get hybrid graph
+		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
+			"rb") as graph:
+			hybrid = pickle.load(graph)
+		
+		collect_stats(
+			circ,
+			pgraph,
+			hybrid,
+			structure[block_num],
+			options = options,
+		)
+	if not post_stats:
+		string = "PRE-\n"
+	else:
+		string = "POST-\n"
+	string += (
+		f"    direct ops      : {options['direct_ops']}\n"
+		f"    direct volume   : {options['direct_volume']}\n"
+		f"    indirect ops    : {options['indirect_ops']}\n"
+		f"    indirect volume : {options['indirect_volume']}\n"
+		f"    external ops    : {options['external_ops']}\n"
+		f"    external volume : {options['external_volume']}\n"
+	)
+	if post_stats:
+		string += get_mapping_results(options)
+	else:
+		string += get_original_count(options)
+	return string

@@ -6,12 +6,13 @@ import pickle
 #filename = "qft_5"
 filename = "add_9"
 coupling = "mesh_3_3"
-#blocksize = "blocksize_3"
-blocksize = "blocksize_4"
-suffix = "shortest-path"
+blocksize = "blocksize_3"
+#blocksize = "blocksize_4"
+suffix = "greedy_shortest-path"
+#suffix = "shortest-path"
 num_q = 9
 #name = f"{filename}_{coupling}_{blocksize}"
-name = f"{filename}_{coupling}_{blocksize}_greedy"
+name = f"{filename}_{coupling}_{blocksize}"
 layoutname = f"layout_qasm/{name}"
 synthname  = f"synthesized_qasm/{name}_{suffix}"
 mappedname = f"mapped_qasm/{name}_{suffix}"
@@ -31,7 +32,7 @@ print("Distance b/w layout and synth: ", layout_unitary.get_distance_from(synth_
 print("Distance b/w layout and mapp: ", layout_unitary.get_distance_from(mapp_unitary))
 print("Distance b/w mapp and synth: ", synth_unitary.get_distance_from(mapp_unitary))
 
-structure_path = f"block_files/{name}/structure.pickle"
+structure_path = f"block_files/{name}_greedy/structure.pickle"
 with open(structure_path, "rb") as f:
     structure = pickle.load(f)
 print(structure)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 from posix import listdir
-from re import match
+from re import S, match
 from typing import Any, Sequence
 import pickle
 import argparse
-from weighted_topology import collect_stats
+
+from qiskit import circuit
 
 from networkx.classes.graph import Graph
 from math import sqrt, ceil
@@ -26,6 +27,19 @@ def load_block_circuit(
 		with open(block_path, 'rb') as f:
 			return pickle.load(f)
 
+def save_block_circuit(
+	block_path : str,
+	block_circuit : Circuit,
+	options : dict[str, Any]
+) -> None:
+	if options['checkpoint_as_qasm']:
+		qasm = OPENQASM2Language().encode(block_circuit)
+		with open(block_path, "w") as f:
+			f.write(qasm)
+	else:
+		with open(block_path, 'wb') as f:
+			pickle.dump(block_circuit, f)
+
 
 def load_block_topology(
 	block_path : str,
@@ -40,6 +54,14 @@ def save_block_topology(
 ) -> None:
 	with open(block_path, 'wb') as f:
 		pickle.dump(subtopology, f)
+
+
+def save_circuit_structure(
+	partition_directory: str,
+	structure_list : Sequence[Sequence[int]],
+) -> None:
+	with open(f"{partition_directory}/structure.pickle", "wb") as f:
+		pickle.dump(structure_list, f)
 
 
 def load_circuit_structure(
@@ -97,7 +119,7 @@ def setup_options(
 	)
 
 	# Select partitioner
-	valid_partitioners = ["scan", "greedy"]
+	valid_partitioners = ["scan", "greedy", "custom"]
 	if not args.partitioner in valid_partitioners:
 		raise RuntimeError(
 			f"{args.partitioner} is not a valid partitioner type."
@@ -216,83 +238,17 @@ def get_original_count(
 	return f"Original CNOTs: {cnots}\n"
 
 
-def run_stats(
+def rewrite_block(
+	block_path : str,
+	original_qudit_group : Sequence[int],
+	new_qudit_group : Sequence[int],
 	options : dict[str, Any],
-	post_stats : bool = False,
-) -> str:
-	# Get the subtopology files
-	sub_files = listdir(options["subtopology_dir"])
-	sub_files.remove(f"summary.txt")
-	sub_files = sorted(sub_files)
+) -> None:
+	circuit = load_block_circuit(block_path, options)
 
-	# Get the block files
-	if not post_stats:
-		block_files = listdir(options["partition_dir"])
-		block_files.remove(f"structure.pickle")
-	else:
-		blocks = listdir(options["synthesis_dir"])
-		block_files = []
-		for bf in blocks:
-			if bf.endswith(".qasm"):
-				block_files.append(bf)
-	block_files = sorted(block_files)
-
-	# Init all the needed variables
-	options["direct_ops"]      = 0 
-	options["direct_volume"]   = 0 
-	options["indirect_ops"]    = 0 
-	options["indirect_volume"] = 0 
-	options["external_ops"]    = 0 
-	options["external_volume"] = 0 
-
-	# Get the qudit group
-	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
-		structure = pickle.load(f)
-
-	# Run collect_stats on each block
-	for block_num in range(len(block_files)):
-		# Get BQSKIT circuit
-		if not post_stats:
-			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		else:
-			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		
-		# Get physical graph
-		with open(options["coupling_map"], "rb") as graph:
-			physical = pickle.load(graph)
-		pgraph = Graph()
-		pgraph.add_edges_from(physical)
-
-		# Get hybrid graph
-		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
-			"rb") as graph:
-			hybrid = pickle.load(graph)
-		
-		collect_stats(
-			circ,
-			pgraph,
-			hybrid,
-			structure[block_num],
-			options = options,
-		)
-	if not post_stats:
-		string = "PRE-\n"
-	else:
-		string = "POST-\n"
-	string += (
-		f"    direct ops      : {options['direct_ops']}\n"
-		f"    direct volume   : {options['direct_volume']}\n"
-		f"    indirect ops    : {options['indirect_ops']}\n"
-		f"    indirect volume : {options['indirect_volume']}\n"
-		f"    external ops    : {options['external_ops']}\n"
-		f"    external volume : {options['external_volume']}\n"
-	)
-	if post_stats:
-		string += get_mapping_results(options)
-	else:
-		string += get_original_count(options)
-	return string
+	for i, qudit in enumerate(sorted(new_qudit_group)):
+		if qudit in original_qudit_group:
+			continue
+		circuit.insert_qudit(i)
+	
+	save_block_circuit(block_path, circuit, options)
