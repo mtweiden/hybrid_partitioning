@@ -3,7 +3,7 @@ import math
 import pickle
 import re
 import networkx as nx
-from weighted_topology import check_multi, collect_stats, get_logical_operations, is_same
+from weighted_topology import check_multi, collect_stats, collect_stats_tuples, get_logical_operations, is_same
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from posix import listdir
 
@@ -44,18 +44,27 @@ if __name__ == "__main__":
 	for c in circs:
 		if ".qasm" not in c:
 			circs.remove(c)
+	blocks = sorted(listdir(block_path))
+	blocks.remove("structure.pickle")
 		
 	# Load qudit groups
 	with open(f"{block_path}/structure.pickle", "rb") as f:
 		structure = pickle.load(f)
 	log_ops = []
 
+	pre_stats = []
+	post_stats = []
+	sub_stats = []
 	for i in range(len(tops)):
 		# load hybrid graph
 		with open(f"{topo_path}/{tops[i]}", "rb") as f:
 			hybrid = pickle.load(f)
+		
+		# load pre synth circuit
+		with open(f"{block_path}/{blocks[i]}", "r") as f:
+			block = OPENQASM2Language().decode(f.read())
 
-		# load circuit
+		# load post synth circuit
 		with open(f"{synth_path}/{circs[i]}", "r") as f:
 			circuit = OPENQASM2Language().decode(f.read())
 
@@ -64,9 +73,11 @@ if __name__ == "__main__":
 
 		log_ops.append(get_logical_operations(circuit, group))
 
-		stats = collect_stats(circuit, physical, hybrid, group)
-		print(f"BLOCK {i}")
-		print(stats)
+		pre, _ = collect_stats_tuples(block, physical, hybrid, group)
+		post, sub = collect_stats_tuples(circuit, physical, hybrid, group)
+		pre_stats.append(pre)
+		post_stats.append(post)
+		sub_stats.append(sub)
 	
 	num_q_sqrt = int(re.search("\d+", map_type)[0])
 	num_q = num_q_sqrt ** 2
@@ -128,6 +139,54 @@ if __name__ == "__main__":
 				if break_flag:
 					break
 	
-	for block in range(len(tops)):
-		print(f"BLOCK {block}")
-		print(swap_counts[block])
+	for i in range(len(tops)):
+		line = ""
+		# block number
+		line += f"{i}, "
+
+		## Pre synth 
+		# 0 active qudits
+		line += f"{pre_stats[i][0]}, "
+		# 1 direct ops
+		line += f"{pre_stats[i][1]}, "
+		# 2 indirect ops
+		line += f"{pre_stats[i][2]}, "
+		# 3 indirect volume
+		line += f"{pre_stats[i][3]}, "
+		# 4 internal volume
+		line += f"{pre_stats[i][4]}, "
+		# 5 external ops
+		line += f"{pre_stats[i][5]}, "
+		# 6 external volume
+		line += f"{pre_stats[i][6]}, "
+		# 7 total volume
+		line += f"{pre_stats[i][7]}, "
+		# 8 cnot count
+		line += f"{pre_stats[i][8]}, "
+
+		## Post synth
+		# 1 direct ops
+		line += f"{post_stats[i][1]}, "
+		# 5 external ops
+		line += f"{post_stats[i][5]}, "
+		# 6 external volume
+		line += f"{post_stats[i][6]}, "
+		# 8 cnot count
+		line += f"{post_stats[i][8]}, "
+
+		# swap count
+		line += f"{swap_counts[i]}, "
+		# total cnots
+		line += f"{post_stats[i][8] + 3*swap_counts[i]}, "
+		
+		## Subtopology
+		# 0 number of edges
+		line += f"{sub_stats[i][0]}, "
+		# 1 physical edges
+		line += f"{sub_stats[i][1]}, "
+		# 2 logical edges
+		line += f"{sub_stats[i][2]}, "
+		# 3 edge path sum
+		line += f"{sub_stats[i][3]}"
+
+		print(line)

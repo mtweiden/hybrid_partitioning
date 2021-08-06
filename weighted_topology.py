@@ -9,6 +9,7 @@ from logging import log
 import pickle
 from posix import listdir
 import re
+from sys import intern
 from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 from pickle import load
@@ -244,6 +245,82 @@ def estimate_cnot_count(
 		estimate += cost
 	return estimate
 
+
+def collect_stats_tuples(
+	circuit : Circuit,
+	physical_graph : Graph, 
+	hybrid_graph : Graph,
+	qudit_group : Sequence[int],
+	blocksize : int | None = None,
+	options : dict[str, Any] | None = None,
+) -> Sequence:
+	# NOTE: may break if idle qudit are removed
+	hybrid_copy = hybrid_graph.copy()
+	blocksize = len(qudit_group) if blocksize is None else blocksize
+	logical_ops = get_logical_operations(circuit, qudit_group)
+	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
+
+	direct = get_direct_edges(logical_ops, physical_graph)
+	if options is not None:
+		indirect = get_indirect_edges(
+			logical_ops, physical_graph, qudit_group, options["blocksize"]
+		)
+		external = get_external_edges(
+			logical_ops, physical_graph, qudit_group, options["blocksize"]
+		)
+	else:
+		indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
+		external = get_external_edges(logical_ops, physical_graph, qudit_group)
+
+
+	direct_volume = get_volume(direct, hybrid_copy)
+	indirect_volume = get_volume(indirect, hybrid_copy) 
+	external_volume = get_volume(external, hybrid_copy) 
+	total_volume = sum([direct_volume, indirect_volume, external_volume])
+
+	logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
+		not in physical_graph.edges and (v,u) not in physical_graph.edges]
+	
+	subgraph = hybrid_copy.subgraph(qudit_group)
+	path_sum = sum([subgraph[x[0]][x[1]]["weight"] for x in subgraph.edges])
+
+	active_qudits = circuit.get_active_qudits()
+
+	total_ops = sum([len(direct), len(indirect), len(external)])
+
+	pre_stats = (
+		# active qudits
+		len(active_qudits),
+		# direct ops
+		len(direct),
+		# indirect ops
+		len(indirect),
+		# indirect volume
+		indirect_volume,
+		# internal volume
+		indirect_volume + len(direct),
+		# external ops
+		len(external),
+		# external volume
+		external_volume,
+		# total volume
+		total_volume,
+		# cnot count
+		total_ops,
+	)
+
+	subtopology_stats = (
+		# number of edges
+		len(list(subgraph.edges)),
+		# physical edges
+		len(list(subgraph.edges)) - len(logical_edges),
+		# logical edges
+		len(logical_edges),
+		# edge path sum
+		path_sum,
+	)
+
+	return (pre_stats, subtopology_stats)
 
 def collect_stats(
 	circuit : Circuit,
