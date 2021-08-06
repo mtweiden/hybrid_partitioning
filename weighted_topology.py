@@ -13,12 +13,9 @@ from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 from pickle import load
 
-from networkx.generators import intersection
-
 from util import get_mapping_results, get_original_count, load_block_circuit
 from networkx import Graph, shortest_path_length
 import networkx
-from networkx.algorithms import hybrid
 from networkx.algorithms.shortest_paths.generic import shortest_path
 from itertools import combinations
 from bqskit import Circuit
@@ -57,8 +54,6 @@ def get_logical_operations(
 	for op in circuit:
 		if len(op.location) > 1:
 			# TODO: handle multi qubit gates
-			#for edge in combinations(op.location, 2):
-			#	logical_operations.append(edge)
 			if qudit_group is not None:
 				a = min([qudit_group[op.location[0]], 
 					qudit_group[op.location[1]]])
