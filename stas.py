@@ -234,7 +234,11 @@ if __name__ == '__main__':
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
-			qudit_group = structure[block_num]
+			# Handle the case where the circuit is still smaller than the qudit
+			# group, should only happen on circuits synthesized in an older
+			# version.
+			group_len = subcircuit.size
+			qudit_group = [structure[block_num][x] for x in range(group_len)]
 			synthesized_circuit.append_circuit(subcircuit, qudit_group)
 
 		with open(options["synthesized_qasm_file"], 'w') as f:
