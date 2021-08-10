@@ -1,11 +1,113 @@
 import argparse
+from genericpath import exists
+
+from networkx.drawing import layout
+from mapping import do_routing
 import math
 import pickle
 import re
 import networkx as nx
-from weighted_topology import check_multi, collect_stats, collect_stats_tuples, get_logical_operations, is_same
+from weighted_topology import check_multi, collect_stats_tuples, get_logical_operations, is_same
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from posix import listdir
+
+
+def count_swaps(mapped_path, mapping, num_q, topologies, logical_ops):
+
+	swap_counts  = {k:0 for k in range(len(topologies))}
+	swap_lists = [[] for _ in range(num_q)]
+	no_counts = {k:-1 for k in range(num_q)}
+
+	mapped_operations = []
+	with open(mapped_path, "r") as f:
+		for line in f:
+			if (p_op := check_multi(line)) is not None:
+				mapped_operations.append(line)
+
+	swaps = 0
+	for mapped_op in mapped_operations:
+		# SWAP
+		p_op = check_multi(mapped_op)
+		if str(mapped_op).startswith("swap"):
+			# Mark off interactions that shouldn't impact swap count
+			no_counts[p_op[0]] = p_op[1]
+			no_counts[p_op[1]] = p_op[0]
+			# Keep track of swaps
+			swap_lists[p_op[0]].append(swaps)
+			swap_lists[p_op[1]].append(swaps)
+			swaps += 1
+			# Do swap
+			temp = mapping[p_op[0]]
+			mapping[p_op[0]] = mapping[p_op[1]]
+			mapping[p_op[1]] = temp
+		# CNOT
+		else:
+			v_op = (mapping[p_op[0]], mapping[p_op[1]])
+
+			break_flag = False
+			for block in range(len(topologies)):
+				for log_op in logical_ops[block]:
+					if is_same(v_op, log_op):
+						# Find the number of SWAPs to count
+						if not no_counts[p_op[0]] == p_op[1]:
+							swaps_to_count = len(swap_lists[p_op[0]]) + len(swap_lists[p_op[1]]) 
+							swap_counts[block] += swaps_to_count
+
+							swaps_to_remove = []
+							if swaps_to_count > 0:
+								swaps_to_remove.extend(swap_lists[p_op[0]])
+								swaps_to_remove.extend(swap_lists[p_op[1]])
+							if len(swaps_to_remove) > 0:
+								swap_lists[p_op[0]] = []
+								swap_lists[p_op[1]] = []
+								for qudit in range(num_q):
+									for s in swap_lists[qudit]:
+										if s in swaps_to_remove:
+											swap_lists[qudit].remove(s)
+						logical_ops[block].remove(log_op)
+						break_flag = True
+						break
+				if break_flag:
+					break
+
+	return swap_counts
+
+
+def count_stats(
+	topologies, topology_path, 
+	blocks, block_path, 
+	synthblocks, synth_path, 
+	structure, physical_graph
+):
+	pre_stats = []
+	post_stats = []
+	sub_stats = []
+	logical_ops = []
+	for i in range(len(topologies)):
+		# load hybrid graph
+		with open(f"{topology_path}/{topologies[i]}", "rb") as f:
+			hybrid = pickle.load(f)
+		
+		# load pre synth circuit
+		with open(f"{block_path}/{blocks[i]}", "r") as f:
+			block = OPENQASM2Language().decode(f.read())
+
+		# load post synth circuit
+		with open(f"{synth_path}/{synthblocks[i]}", "r") as f:
+			circuit = OPENQASM2Language().decode(f.read())
+
+		# block name and number
+		group = structure[i]
+
+		logical_ops.append(get_logical_operations(circuit, group))
+
+		pre, _ = collect_stats_tuples(block, physical_graph, hybrid, group)
+		post, sub = collect_stats_tuples(circuit, physical_graph, hybrid, group)
+		pre_stats.append(pre)
+		post_stats.append(post)
+		sub_stats.append(sub)
+	
+	return pre_stats, post_stats, sub_stats, logical_ops
 
 
 if __name__ == "__main__":
@@ -50,94 +152,47 @@ if __name__ == "__main__":
 	# Load qudit groups
 	with open(f"{block_path}/structure.pickle", "rb") as f:
 		structure = pickle.load(f)
-	log_ops = []
-
-	pre_stats = []
-	post_stats = []
-	sub_stats = []
-	for i in range(len(tops)):
-		# load hybrid graph
-		with open(f"{topo_path}/{tops[i]}", "rb") as f:
-			hybrid = pickle.load(f)
-		
-		# load pre synth circuit
-		with open(f"{block_path}/{blocks[i]}", "r") as f:
-			block = OPENQASM2Language().decode(f.read())
-
-		# load post synth circuit
-		with open(f"{synth_path}/{circs[i]}", "r") as f:
-			circuit = OPENQASM2Language().decode(f.read())
-
-		# block name and number
-		group = structure[i]
-
-		log_ops.append(get_logical_operations(circuit, group))
-
-		pre, _ = collect_stats_tuples(block, physical, hybrid, group)
-		post, sub = collect_stats_tuples(circuit, physical, hybrid, group)
-		pre_stats.append(pre)
-		post_stats.append(post)
-		sub_stats.append(sub)
 	
 	num_q_sqrt = int(re.search("\d+", map_type)[0])
 	num_q = num_q_sqrt ** 2
 	mapping = {k:k for k in range(num_q)}
-	swap_counts  = {k:0 for k in range(len(tops))}
-	swap_lists = [[] for _ in range(num_q)]
-	counted_swaps = []
-	no_counts = {k:-1 for k in range(num_q)}
 
-	mapped_operations = []
-	with open(mapped_path, "r") as f:
-		for line in f:
-			if (p_op := check_multi(line)) is not None:
-				mapped_operations.append(line)
-
-	swaps = 0
-	for mapped_op in mapped_operations:
-		# SWAP
-		p_op = check_multi(mapped_op)
-		if str(mapped_op).startswith("swap"):
-			# Mark off interactions that shouldn't impact swap count
-			no_counts[p_op[0]] = p_op[1]
-			no_counts[p_op[1]] = p_op[0]
-			# Keep track of swaps
-			swap_lists[p_op[0]].append(swaps)
-			swap_lists[p_op[1]].append(swaps)
-			swaps += 1
-			# Do swap
-			temp = mapping[p_op[0]]
-			mapping[p_op[0]] = mapping[p_op[1]]
-			mapping[p_op[1]] = temp
-		# CNOT
+	pre_stats, post_stats, sub_stats, logical_ops = count_stats(
+		tops, topo_path, 
+		blocks, block_path, 
+		circs, synth_path, 
+		structure, physical,
+	)
+	swap_counts = count_swaps(mapped_path, mapping, num_q, tops, logical_ops)
+	
+	# Get the "unsynthesized" numbers
+	# route the original circuit without synthesizing
+	mapped_nosynth_path = f"mapped_qasm/{short_name}_nosynth"
+	if not exists(f"mapped_qasm/{short_name}_nosynth"):
+		if "greedy" in short_name:
+			shortest_name = short_name.split("_greedy")[0]
 		else:
-			v_op = (mapping[p_op[0]], mapping[p_op[1]])
+			shortest_name = short_name
+		do_routing(
+			f"layout_qasm/{shortest_name}",
+			coupling_map,
+			mapped_nosynth_path
+		)
 
-			break_flag = False
-			for block in range(len(tops)):
-				for log_op in log_ops[block]:
-					if is_same(v_op, log_op):
-						# Find the number of SWAPs to count
-						if not no_counts[p_op[0]] == p_op[1]:
-							swaps_to_count = len(swap_lists[p_op[0]]) + len(swap_lists[p_op[1]]) 
-							swap_counts[block] += swaps_to_count
-
-							swaps_to_remove = []
-							if swaps_to_count > 0:
-								swaps_to_remove.extend(swap_lists[p_op[0]])
-								swaps_to_remove.extend(swap_lists[p_op[1]])
-							if len(swaps_to_remove) > 0:
-								swap_lists[p_op[0]] = []
-								swap_lists[p_op[1]] = []
-								for qudit in range(num_q):
-									for s in swap_lists[qudit]:
-										if s in swaps_to_remove:
-											swap_lists[qudit].remove(s)
-						log_ops[block].remove(log_op)
-						break_flag = True
-						break
-				if break_flag:
-					break
+	logical_ops_nosynth = []
+	mapping = {k:k for k in range(num_q)}
+	_, post_nosynth, sub_nosynth, logical_ops_nosynth = count_stats(
+		tops, topo_path,
+		blocks, block_path,
+		blocks, block_path,
+		structure, physical,
+	)
+	swaps_nosynth = count_swaps(mapped_nosynth_path, mapping, num_q, tops, 
+		logical_ops_nosynth)
+	
+	# for each block file
+	# append to a circuit
+	# get a breakdown of cnots and swaps per block
 	
 	for i in range(len(tops)):
 		line = ""
@@ -163,6 +218,8 @@ if __name__ == "__main__":
 		line += f"{pre_stats[i][7]}, "
 		# 8 cnot count
 		line += f"{pre_stats[i][8]}, "
+		# unsynthed cnot count
+		line += f"{post_nosynth[i][8] + 3*swaps_nosynth[i]}, "
 
 		## Post synth
 		# 1 direct ops
