@@ -670,8 +670,8 @@ def get_best_qudit_group(
 
 	candidate_tuples = itertools.combinations(candidates, num_to_add)
 
-	best_score = -1
-	best_group = []
+	best_score = 0
+	best_group = old_qudit_group
 	for candi in candidate_tuples:
 		new_group = [x for x in old_qudit_group]
 		for x in sorted(candi):
