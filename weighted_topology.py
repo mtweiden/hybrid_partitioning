@@ -97,72 +97,42 @@ def is_internal(
 	physical_topology: Graph,
 	qudit_group: Sequence[int],
 	edge: tuple[int],
-	blocksize : int | None = None,
 ) -> bool:
 	# Check for a path in the subgraph if no blocksize is provided
-	if blocksize is None:
-		subgraph = physical_topology.subgraph(qudit_group)
-		try:
-			return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
-		except networkx.exception.NetworkXNoPath:
-			return False
-	else:
-		# Check for a path in the subgraph if no qudits are idle
-		if blocksize == len(qudit_group):
-			subgraph = physical_topology.subgraph(qudit_group)
-			try:
-				return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
-			except networkx.exception.NetworkXNoPath:
-				return False
-		# Check that the shortest path is < the blocksize otherwise
-		else:
-			return (
-				shortest_path_length(physical_topology,edge[0],edge[1]) 
-				< blocksize
-			)
+	subgraph = physical_topology.subgraph(qudit_group)
+	try:
+		return shortest_path_length(subgraph,edge[0],edge[1]) < len(qudit_group)
+	except networkx.exception.NetworkXNoPath:
+		return False
 
 
 def get_external_edges(
 	logical_operations : Sequence[Sequence[int]],
 	physical_topology : Graph,
 	qudit_group : Sequence[int],
-	blocksize : int | None = None,
 ) -> Sequence[Sequence[int]]:
 	"""
 	Gates that require a logical edge to be inserted into the hybrid topology.
 	"""
-	if blocksize is None:
-		return [
-			(u,v) for (u,v) in logical_operations if not 
-			is_internal(physical_topology, qudit_group, (u,v))
-		]
-	else:
-		return [
-			(u,v) for (u,v) in logical_operations if not 
-			is_internal(physical_topology, qudit_group, (u,v), blocksize)
-		]
+	return [
+		(u,v) for (u,v) in logical_operations if not 
+		is_internal(physical_topology, qudit_group, (u,v))
+	]
 
 
 def get_indirect_edges(
 	logical_operations : Sequence[Sequence[int]],
 	physical_topology : Graph,
 	qudit_group : Sequence[int],
-	blocksize : int | None = None,
 ) -> Sequence[Sequence[int]]:
 	"""
 	Gates that can be implemented on physical edges but non adjacent vertices.
 	"""
 	direct = get_direct_edges(logical_operations, physical_topology)
-	if blocksize is None:
-		internal = [
-			edge for edge in logical_operations if 
-			is_internal(physical_topology, qudit_group, edge)
-		]
-	else:
-		internal = [
-			edge for edge in logical_operations if 
-			is_internal(physical_topology, qudit_group, edge, blocksize)
-		]
+	internal = [
+		edge for edge in logical_operations if 
+		is_internal(physical_topology, qudit_group, edge)
+	]
 	indirect = [
 		(u,v) for (u,v) in internal if 
 		(u,v) not in direct and (v,u) not in direct
@@ -261,17 +231,8 @@ def collect_stats_tuples(
 	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
 
 	direct = get_direct_edges(logical_ops, physical_graph)
-	if options is not None:
-		indirect = get_indirect_edges(
-			logical_ops, physical_graph, qudit_group, options["blocksize"]
-		)
-		external = get_external_edges(
-			logical_ops, physical_graph, qudit_group, options["blocksize"]
-		)
-	else:
-		indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
-		external = get_external_edges(logical_ops, physical_graph, qudit_group)
-
+	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
+	external = get_external_edges(logical_ops, physical_graph, qudit_group)
 
 	direct_volume = get_volume(direct, hybrid_copy)
 	indirect_volume = get_volume(indirect, hybrid_copy) 
@@ -337,17 +298,8 @@ def collect_stats(
 	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
 
 	direct = get_direct_edges(logical_ops, physical_graph)
-	if options is not None:
-		indirect = get_indirect_edges(
-			logical_ops, physical_graph, qudit_group, options["blocksize"]
-		)
-		external = get_external_edges(
-			logical_ops, physical_graph, qudit_group, options["blocksize"]
-		)
-	else:
-		indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
-		external = get_external_edges(logical_ops, physical_graph, qudit_group)
-
+	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
+	external = get_external_edges(logical_ops, physical_graph, qudit_group)
 
 	direct_volume = get_volume(direct, hybrid_copy)
 	indirect_volume = get_volume(indirect, hybrid_copy) 
@@ -477,8 +429,8 @@ def add_logical_edges(
 		updated_graph (Graph): Return the new hybird_graph.
 	"""
 	hybrid_graph = hybrid_topology.copy()
-	external_edges = get_external_edges(logical_operations, 
-		physical_topology, qudit_group, options["blocksize"])
+	external_edges = get_external_edges(logical_operations, physical_topology,
+		qudit_group)
 	
 	if options["nearest_physical"]:
 		# Shortest path between vertices physically connected to vertex_a and
@@ -550,9 +502,7 @@ def add_logical_edges(
 	else: # shortest_path or shortest_density assumed
 		subgraph = physical_topology.subgraph(qudit_group)
 		for op in logical_operations:
-			if not is_internal(physical_topology, qudit_group, op, 
-				options["blocksize"]):
-
+			if not is_internal(physical_topology, qudit_group, op):
 				dist = shortest_path_length(
 					physical_topology,
 					op[0],
@@ -674,8 +624,9 @@ def get_best_qudit_group(
 	best_group = old_qudit_group
 	for candi in candidate_tuples:
 		new_group = [x for x in old_qudit_group]
-		for x in sorted(candi):
+		for x in candi:
 			new_group.append(x)
+		new_group = sorted(new_group)
 		direct = get_direct_edges(log_ops, physical_graph)
 		indirect = get_indirect_edges(log_ops, physical_graph, new_group)
 		if len(direct) + len(indirect) > best_score:

@@ -174,12 +174,12 @@ if __name__ == '__main__':
 			if len(structure[block_num]) < options["blocksize"]:
 				old_group = structure[block_num]
 				num_to_add = options['blocksize'] - len(old_group)
-				print(f"  Adding {num_to_add} qudits to the block")
 				new_group = get_best_qudit_group(
 					block_path,
 					structure[block_num],
 					options,
 				)
+				print(f"  Added {len(new_group) - len(old_group)} qudits to {block_files[block_num]}")
 				# Save new block qasm
 				rewrite_block(block_path, old_group, new_group, options)
 				# Save new qudit group structure
