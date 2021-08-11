@@ -118,7 +118,8 @@ if __name__ == '__main__':
 			circuit = OPENQASM2Language().decode(f.read())
 		
 		if options["partitioner"] == "greedy":
-			partitioner = GreedyPartitioner(args.blocksize)
+			partitioner = GreedyPartitioner(args.blocksize, "cost_based")
+			#partitioner = GreedyPartitioner(args.blocksize)
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
 
