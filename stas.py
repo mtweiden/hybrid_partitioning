@@ -12,7 +12,7 @@ from bqskit.compiler.passes.partitioning.greedy import GreedyPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing
-from mapping import dummy_layout, dummy_routing
+from mapping import dummy_layout, dummy_routing, dummy_synthesis
 from weighted_topology import get_best_qudit_group, get_hybrid_topology, get_logical_operations, run_stats
 from util import (
 	load_circuit_structure,
@@ -130,7 +130,6 @@ if __name__ == '__main__':
 		)
 		data = {
 			"machine_model": logical_machine,
-			#"keep_idle_qudits": True
 		}
 
 		partitioner.run(circuit, data)
@@ -218,14 +217,26 @@ if __name__ == '__main__':
 		structure = load_circuit_structure(options["partition_dir"])
 		block_list = list(range(0, len(block_files)))
 		for block_number in block_list:
-			print(
-				f"    Synthesizing block {block_number+1}/{len(block_files)}"
-			)
-			synthesize(
-				block_name=block_names[block_number],
-				qudit_group=structure[block_number],
-				options=options,
-			)
+			# Blocks with very few qudits do not synthesize well, so don't
+			if len(structure[block_number]) <= 2:
+				print(
+					f"    Block too small (size = {len(structure[block_number])})"
+					f", skipping {block_files[block_number]}"
+				)
+				# copy the block file to the synthesis folder
+				dummy_synthesis(
+					block_name=block_names[block_number],
+					options=options,
+				)
+			else:
+				print(
+					f"    Synthesizing block {block_number+1}/{len(block_files)}"
+				)
+				synthesize(
+					block_name=block_names[block_number],
+					qudit_group=structure[block_number],
+					options=options,
+				)
 
 		# Format QASM as subcircuit & add to circuit
 		for block_num in range(len(block_files)):

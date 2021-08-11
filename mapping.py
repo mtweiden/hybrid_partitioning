@@ -1,4 +1,7 @@
 # Qiskit dependencies
+from __future__ import annotations
+from typing import Any
+
 from qiskit import QuantumCircuit
 from qiskit.transpiler import CouplingMap
 from qiskit.transpiler.passes import SabreLayout, SabreSwap
@@ -99,6 +102,20 @@ def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
 			out_qasm.write(in_qasm.read())
+
+
+def dummy_synthesis(
+	block_name : str,
+	options : dict[str, Any],
+) -> None:
+	synth_dir = f"{options['synthesis_dir']}/{block_name}"
+	block_path = f"{options['partition_dir']}/{block_name}"
+
+	with open(f"{block_path}.qasm", "r") as f:
+		block_qasm = f.read()
+
+	with open(f"{synth_dir}.qasm", "w") as f:
+		f.write(block_qasm)
 
 
 def format(input_line, layout_map) -> str:
