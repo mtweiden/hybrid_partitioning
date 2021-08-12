@@ -257,10 +257,33 @@ if __name__ == '__main__':
 			f.write(OPENQASM2Language().encode(synthesized_circuit))
 		#endregion
 
+		# Relayout
+		print("="*80)
+		print(f"Doing Relayout for {options['synthesized_qasm_file']}...")
+		print("="*80)
+		if exists(options["relayout_qasm_file"]):
+			print(
+				f"Found existing file for {options['relayout_qasm_file']},"
+				", skipping layout"
+			)
+		else:
+			if not args.dummy_map:
+				do_layout(
+					options["synthesized_qasm_file"],
+					options["coupling_map"], 
+					options["relayout_qasm_file"]
+				)
+			else:
+				dummy_layout(
+					options["synthesized_qasm_file"],
+					options["coupling_map"], 
+					options["relayout_qasm_file"]
+				)
+
 		# Routing
 		#region routing
 		print("="*80)
-		print(f"Doing Routing for {options['synthesized_qasm_file']}...")
+		print(f"Doing Routing for {options['relayout_qasm_file']}...")
 		print("="*80)
 		if exists(options["mapped_qasm_file"]):
 			print(
@@ -270,13 +293,13 @@ if __name__ == '__main__':
 		elif not args.partition_only:
 			if not args.dummy_map:
 				do_routing(
-					options["synthesized_qasm_file"], 
+					options["relayout_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
 				)
 			else:
 				dummy_routing(
-					options["synthesized_qasm_file"], 
+					options["relayout_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
 				)

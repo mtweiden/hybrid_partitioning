@@ -50,33 +50,40 @@ def count_swaps(mapped_path, mapping, num_q, topologies, logical_ops):
 					if is_same(v_op, log_op):
 						# Find the number of SWAPs to count
 						if not no_counts[p_op[0]] == p_op[1]:
-							swaps_to_count = len(swap_lists[p_op[0]]) + len(swap_lists[p_op[1]]) 
+							a = set(swap_lists[p_op[0]])
+							b = set(swap_lists[p_op[1]])
+							swaps_to_remove = a.union(b)
+							swaps_to_count = len(swaps_to_remove)
 							swap_counts[block] += swaps_to_count
 
-							swaps_to_remove = []
-							if swaps_to_count > 0:
-								swaps_to_remove.extend(swap_lists[p_op[0]])
-								swaps_to_remove.extend(swap_lists[p_op[1]])
-							if len(swaps_to_remove) > 0:
-								swap_lists[p_op[0]] = []
-								swap_lists[p_op[1]] = []
-								for qudit in range(num_q):
-									for s in swap_lists[qudit]:
-										if s in swaps_to_remove:
-											swap_lists[qudit].remove(s)
+							swap_lists[p_op[0]] = []
+							swap_lists[p_op[1]] = []
+
+							for old_swap in list(swaps_to_remove):
+								for qudit in range(len(swap_lists)):
+									if old_swap in swap_lists[qudit]:
+										swap_lists[qudit].remove(old_swap)
 						logical_ops[block].remove(log_op)
 						break_flag = True
 						break
 				if break_flag:
 					break
 
+#	print(swaps)
+#	s = 0
+#	for i in range(len(topologies)):
+#		s += swap_counts[i]
+#	print(s)
+#	for a in swap_lists:
+#		if len(a) > 0:
+#			print(a)
 	return swap_counts
 
 
 def count_stats(
-	topologies, topology_path, 
-	blocks, block_path, 
-	synthblocks, synth_path, 
+	topologies, topology_path,
+	blocks, block_path,
+	synthblocks, synth_path,
 	structure, physical_graph
 ):
 	pre_stats = []
@@ -87,7 +94,7 @@ def count_stats(
 		# load hybrid graph
 		with open(f"{topology_path}/{topologies[i]}", "rb") as f:
 			hybrid = pickle.load(f)
-		
+
 		# load pre synth circuit
 		with open(f"{block_path}/{blocks[i]}", "r") as f:
 			block = OPENQASM2Language().decode(f.read())
@@ -106,14 +113,14 @@ def count_stats(
 		pre_stats.append(pre)
 		post_stats.append(post)
 		sub_stats.append(sub)
-	
+
 	return pre_stats, post_stats, sub_stats, logical_ops
 
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument(
-		"synthesis_files_dir", type=str, 
+		"synthesis_files_dir", type=str,
 		default="subtopology_files/add_9_mesh_3_3_blocksize_4_custom_nearest-physical",
 		help="synthesis qasm",
 	)
@@ -131,7 +138,7 @@ if __name__ == "__main__":
 	synth_path = f"synthesis_files/{full_name}"
 	topo_path = f"subtopology_files/{full_name}"
 	mapped_path = f"mapped_qasm/{full_name}"
-	
+
 	# load physical graph
 	map_type = re.search("mesh_\d+_\d+", short_name)[0]
 	coupling_map = f"coupling_maps/{map_type}"
@@ -139,7 +146,7 @@ if __name__ == "__main__":
 		edge_set = pickle.load(f)
 	physical = nx.Graph()
 	physical.add_edges_from(edge_set)
-	
+
 	tops = sorted(listdir(topo_path))
 	tops.remove("summary.txt")
 	circs = sorted(listdir(synth_path))
@@ -148,23 +155,23 @@ if __name__ == "__main__":
 			circs.remove(c)
 	blocks = sorted(listdir(block_path))
 	blocks.remove("structure.pickle")
-		
+
 	# Load qudit groups
 	with open(f"{block_path}/structure.pickle", "rb") as f:
 		structure = pickle.load(f)
-	
+
 	num_q_sqrt = int(re.search("\d+", map_type)[0])
 	num_q = num_q_sqrt ** 2
 	mapping = {k:k for k in range(num_q)}
 
 	pre_stats, post_stats, sub_stats, logical_ops = count_stats(
-		tops, topo_path, 
-		blocks, block_path, 
-		circs, synth_path, 
+		tops, topo_path,
+		blocks, block_path,
+		circs, synth_path,
 		structure, physical,
 	)
 	swap_counts = count_swaps(mapped_path, mapping, num_q, tops, logical_ops)
-	
+
 	# Get the "unsynthesized" numbers
 	# route the original circuit without synthesizing
 	mapped_nosynth_path = f"mapped_qasm/{short_name}_nosynth"
@@ -187,19 +194,19 @@ if __name__ == "__main__":
 		blocks, block_path,
 		structure, physical,
 	)
-	swaps_nosynth = count_swaps(mapped_nosynth_path, mapping, num_q, tops, 
+	swaps_nosynth = count_swaps(mapped_nosynth_path, mapping, num_q, tops,
 		logical_ops_nosynth)
-	
+
 	# for each block file
 	# append to a circuit
 	# get a breakdown of cnots and swaps per block
-	
+
 	for i in range(len(tops)):
 		line = ""
 		# block number
 		line += f"{i}, "
 
-		## Pre synth 
+		## Pre synth
 		# 0 active qudits
 		line += f"{pre_stats[i][0]}, "
 		# 1 direct ops
@@ -235,7 +242,7 @@ if __name__ == "__main__":
 		line += f"{swap_counts[i]}, "
 		# total cnots
 		line += f"{post_stats[i][8] + 3*swap_counts[i]}, "
-		
+
 		## Subtopology
 		# 0 number of edges
 		line += f"{sub_stats[i][0]}, "
@@ -247,3 +254,20 @@ if __name__ == "__main__":
 		line += f"{sub_stats[i][3]}"
 
 		print(line)
+
+	cx = 0
+	swap = 0
+	origcx = 0
+	origswap = 0
+	for i in range(len(tops)):
+		cx += post_stats[i][8]
+		swap += swap_counts[i]
+		origcx += post_nosynth[i][8]
+		origswap += swaps_nosynth[i]
+	print(f"Original cx: {origcx}")
+	print(f"Original swaps: {origswap}")
+	print(f"Flow cx: {cx}")
+	print(f"Flow swaps: {swap}")
+
+	print(f"Original total: {origcx + 3* origswap}")
+	print(f"Flow total: {cx + 3* swap}")
