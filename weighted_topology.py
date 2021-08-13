@@ -14,7 +14,7 @@ from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 from pickle import load
 
-from util import get_mapping_results, get_original_count, load_block_circuit
+from util import get_mapping_results, get_original_count, get_remapping_results, load_block_circuit
 from networkx import Graph, shortest_path_length
 import networkx
 from networkx.algorithms.shortest_paths.generic import shortest_path
@@ -639,6 +639,7 @@ def get_best_qudit_group(
 def run_stats(
 	options : dict[str, Any],
 	post_stats : bool = False,
+	resynthesized : bool = False,
 ) -> str:
 	# Get the subtopology files
 	sub_files = listdir(options["subtopology_dir"])
@@ -650,7 +651,10 @@ def run_stats(
 		block_files = listdir(options["partition_dir"])
 		block_files.remove(f"structure.pickle")
 	else:
-		blocks = listdir(options["synthesis_dir"])
+		if not resynthesized:
+			blocks = listdir(options["synthesis_dir"])
+		else:
+			blocks = listdir(options["resynthesis_dir"])
 		block_files = []
 		for bf in blocks:
 			if bf.endswith(".qasm"):
@@ -676,8 +680,12 @@ def run_stats(
 			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
 				"r") as qasm:
 				circ = OPENQASM2Language().decode(qasm.read())
-		else:
+		elif not resynthesized:
 			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
+				"r") as qasm:
+				circ = OPENQASM2Language().decode(qasm.read())
+		else:
+			with open(f"{options['resynthesis_dir']}/{block_files[block_num]}", 
 				"r") as qasm:
 				circ = OPENQASM2Language().decode(qasm.read())
 		
@@ -701,8 +709,11 @@ def run_stats(
 		)
 	if not post_stats:
 		string = "PRE-\n"
-	else:
+	elif not resynthesized:
 		string = "POST-\n"
+	else:
+		string = "RESYNTH-\n"
+
 	string += (
 		f"    direct ops      : {options['direct_ops']}\n"
 		f"    direct volume   : {options['direct_volume']}\n"
@@ -713,6 +724,8 @@ def run_stats(
 	)
 	if post_stats:
 		string += get_mapping_results(options)
+	elif resynthesized:
+		string += get_remapping_results(options)
 	else:
 		string += get_original_count(options)
 	return string

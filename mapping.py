@@ -82,6 +82,7 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
 
+
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 	# Make sure to expand the circuit to the number of physical qubits
 	circ = QuantumCircuit.from_qasm_file(input_qasm_file)

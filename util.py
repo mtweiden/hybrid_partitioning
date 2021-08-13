@@ -182,9 +182,11 @@ def setup_options(
 	target_name += suffix
 	options["target_name"] = target_name
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
+	options["resynthesized_qasm_file"] = "resynthesized_qasm/" + target_name
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
-	options["relayout_qasm_file"] = "relayout_qasm/" + target_name
+	options["remapped_qasm_file"] = "mapped_qasm/" + target_name + "_remapped"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
+	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 
 	return options
@@ -226,6 +228,22 @@ def get_mapping_results(
 			elif match("swap", line):
 				swaps += 1
 	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+
+
+def get_remapping_results(
+	options : dict[str, Any],
+) -> str:
+	path = options["remapped_qasm_file"]
+	cnots = 0
+	swaps = 0
+	with open(path, "r") as qasmfile:
+		for line in qasmfile:
+			if match("cx", line):
+				cnots += 1
+			elif match("swap", line):
+				swaps += 1
+	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+
 
 def get_original_count(
 	options : dict[str, Any],

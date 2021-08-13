@@ -3,6 +3,7 @@ from os.path import exists
 from os import mkdir, listdir
 import argparse
 import pickle
+from post_synth import compare_blocks
 
 from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
@@ -170,21 +171,21 @@ if __name__ == '__main__':
 			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
 
-			# Check if qudits should be added to the block
-			if len(structure[block_num]) < options["blocksize"]:
-				old_group = structure[block_num]
-				num_to_add = options['blocksize'] - len(old_group)
-				new_group = get_best_qudit_group(
-					block_path,
-					structure[block_num],
-					options,
-				)
-				print(f"  Added {len(new_group) - len(old_group)} qudits to {block_files[block_num]}")
-				# Save new block qasm
-				rewrite_block(block_path, old_group, new_group, options)
-				# Save new qudit group structure
-				structure[block_num] = new_group
-				save_circuit_structure(options["partition_dir"], structure)
+			## Check if qudits should be added to the block
+			#if len(structure[block_num]) < options["blocksize"]:
+			#	old_group = structure[block_num]
+			#	num_to_add = options['blocksize'] - len(old_group)
+			#	new_group = get_best_qudit_group(
+			#		block_path,
+			#		structure[block_num],
+			#		options,
+			#	)
+			#	print(f"  Added {len(new_group) - len(old_group)} qudits to {block_files[block_num]}")
+			#	# Save new block qasm
+			#	rewrite_block(block_path, old_group, new_group, options)
+			#	# Save new qudit group structure
+			#	structure[block_num] = new_group
+			#	save_circuit_structure(options["partition_dir"], structure)
 
 			subtopology = get_hybrid_topology(
 				block_path,
@@ -257,33 +258,10 @@ if __name__ == '__main__':
 			f.write(OPENQASM2Language().encode(synthesized_circuit))
 		#endregion
 
-		# Relayout
-		print("="*80)
-		print(f"Doing Relayout for {options['synthesized_qasm_file']}...")
-		print("="*80)
-		if exists(options["relayout_qasm_file"]):
-			print(
-				f"Found existing file for {options['relayout_qasm_file']},"
-				", skipping layout"
-			)
-		else:
-			if not args.dummy_map:
-				do_layout(
-					options["synthesized_qasm_file"],
-					options["coupling_map"], 
-					options["relayout_qasm_file"]
-				)
-			else:
-				dummy_layout(
-					options["synthesized_qasm_file"],
-					options["coupling_map"], 
-					options["relayout_qasm_file"]
-				)
-
 		# Routing
 		#region routing
 		print("="*80)
-		print(f"Doing Routing for {options['relayout_qasm_file']}...")
+		print(f"Doing Routing for {options['synthesized_qasm_file']}...")
 		print("="*80)
 		if exists(options["mapped_qasm_file"]):
 			print(
@@ -293,18 +271,27 @@ if __name__ == '__main__':
 		elif not args.partition_only:
 			if not args.dummy_map:
 				do_routing(
-					options["relayout_qasm_file"], 
+					options["synthesized_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
 				)
 			else:
 				dummy_routing(
-					options["relayout_qasm_file"], 
+					options["synthesized_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	#get_summary(options, block_files, True)
 	print(run_stats(options, post_stats=False))
 	if not args.partition_only:
 		print(run_stats(options, post_stats=True))
+	
+		# Prepare iteration
+		# Flag blocks that need to be discarded because they are longer than if
+		# we had just routed the circuit
+		compare_blocks(options)
+		print(run_stats(options, resynthesized=True))
+
+		
+		
+

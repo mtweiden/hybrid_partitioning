@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 import argparse
 from genericpath import exists
+from os import mkdir
+from typing import Any
+from bqskit.ir.circuit import Circuit
 
 from networkx.drawing import layout
 from mapping import do_routing
@@ -12,11 +17,16 @@ from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from posix import listdir
 
 
-def count_swaps(mapped_path, mapping, num_q, topologies, logical_ops):
-
-	swap_counts  = {k:0 for k in range(len(topologies))}
+def count_swaps(
+	mapped_path, 
+	num_q, 
+	num_blocks,
+	logical_ops
+):
+	swap_counts  = {k:0 for k in range(num_blocks)}
 	swap_lists = [[] for _ in range(num_q)]
 	no_counts = {k:-1 for k in range(num_q)}
+	mapping = {k:k for k in range(num_q)}
 
 	mapped_operations = []
 	with open(mapped_path, "r") as f:
@@ -45,7 +55,7 @@ def count_swaps(mapped_path, mapping, num_q, topologies, logical_ops):
 			v_op = (mapping[p_op[0]], mapping[p_op[1]])
 
 			break_flag = False
-			for block in range(len(topologies)):
+			for block in range(num_blocks):
 				for log_op in logical_ops[block]:
 					if is_same(v_op, log_op):
 						# Find the number of SWAPs to count
@@ -69,22 +79,150 @@ def count_swaps(mapped_path, mapping, num_q, topologies, logical_ops):
 				if break_flag:
 					break
 
-#	print(swaps)
-#	s = 0
-#	for i in range(len(topologies)):
-#		s += swap_counts[i]
-#	print(s)
-#	for a in swap_lists:
-#		if len(a) > 0:
-#			print(a)
+	#print(swaps)
+	#tot = 0
+	#for i in range(num_blocks):
+	#	tot += swap_counts[i]
+	#print(tot)
 	return swap_counts
 
 
+def compare_blocks(
+	options: dict[str, Any],
+):
+	topologies = sorted(listdir(options["subtopology_dir"]))
+	topologies.remove("summary.txt")
+	blocks = sorted(listdir(options["partition_dir"]))
+	blocks.remove("structure.pickle")
+	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+		structure = pickle.load(f)
+	synthblocks = sorted(listdir(options["synthesis_dir"]))
+	for sb in synthblocks:
+		if ".qasm" not in sb:
+			synthblocks.remove(sb)
+	with open(options["coupling_map"], "rb") as f:
+		edge_set = pickle.load(f)
+	physical_graph = nx.Graph()
+	physical_graph.add_edges_from(edge_set)
+	
+	# Create nosynth mapped file
+	mapped_nosynth_path = options["mapped_qasm_file"] + "_nosynth"
+	if not exists(mapped_nosynth_path):
+		print("Routing non-synthesized circuit for comparison...")
+		do_routing(
+			options["layout_qasm_file"],
+			options["coupling_map"],
+			mapped_nosynth_path
+		)
+
+	nosynth_count = []
+	flow_count = []
+	nosynth_logical_ops = []
+	flow_logical_ops = []
+	for i in range(len(topologies)):
+		# load hybrid graph
+		with open(f"{options['subtopology_dir']}/{topologies[i]}", "rb") as f:
+			hybrid = pickle.load(f)
+
+		# load pre synth circuit
+		with open(f"{options['partition_dir']}/{blocks[i]}", "r") as f:
+			block = OPENQASM2Language().decode(f.read())
+
+		# load post synth circuit
+		with open(f"{options['synthesis_dir']}/{synthblocks[i]}", "r") as f:
+			circuit = OPENQASM2Language().decode(f.read())
+
+		# block name and number
+		group = structure[i]
+
+		flow_logical_ops.append(get_logical_operations(circuit, group))
+		nosynth_logical_ops.append(get_logical_operations(block, group))
+		flow_cx = get_block_cnot_count(f"{options['synthesis_dir']}/{synthblocks[i]}")
+		nosynth_cx = get_block_cnot_count(f"{options['partition_dir']}/{blocks[i]}")
+		flow_count.append(flow_cx)
+		nosynth_count.append(nosynth_cx)
+
+	
+	# Get SWAP counts
+	nosynth_swaps = count_swaps(
+		mapped_nosynth_path,
+		options["num_p"],
+		len(topologies),
+		nosynth_logical_ops,
+	)
+	flow_swaps = count_swaps(
+		options["mapped_qasm_file"],
+		options["num_p"],
+		len(topologies),
+		flow_logical_ops,
+	)
+
+	reroute_flag = False
+	if not exists(options["resynthesis_dir"]):
+		mkdir(options["resynthesis_dir"])
+	# Compare each block
+	for block_num in range(len(topologies)):
+		nosynth_cnots = nosynth_count[block_num] + 3*nosynth_swaps[block_num]
+		flow_cnots = flow_count[block_num] + 3*flow_swaps[block_num]
+
+		#print(
+		#	f"block_{block_num}:\n\tNo-synth:\t{nosynth_cnots} "
+		#	f"({nosynth_count[block_num]} cnots, {3*nosynth_swaps[block_num]} from swaps)\n\t"
+		#	f"With-synth:\t{flow_cnots} ({flow_count[block_num]} cnots, "
+		#	f"{3*flow_swaps[block_num]} from swaps)"
+		#)
+		if nosynth_cnots < flow_cnots:
+			reroute_flag = True
+			print(
+				f"Synthesized block {block_num} is {flow_cnots/nosynth_cnots}x"
+				" bigger, replacing with original block..."
+			)
+			# Replace block
+			with open(f"{options['partition_dir']}/{blocks[block_num]}", "r") as f:
+				qasm = f.read()
+			with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
+				f.write(qasm)
+		else:
+			with open(f"{options['synthesis_dir']}/{blocks[block_num]}", "r") as f:
+				qasm = f.read()
+			with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
+				f.write(qasm)
+
+	if reroute_flag:
+		# Recreate new synthesized qasm file
+		new_circ = Circuit(options['num_p'])
+		for block_num in range(len(structure)):
+			with open(
+				f"{options['resynthesis_dir']}/{blocks[block_num]}", "r"
+			) as f:
+				subcircuit_qasm = f.read()
+			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+			group_len = subcircuit.size
+			qudit_group = [structure[block_num][x] for x in range(group_len)]
+			new_circ.append_circuit(subcircuit, qudit_group)
+		
+		with open(options["resynthesized_qasm_file"], "w") as f:
+			f.write(OPENQASM2Language().encode(new_circ))
+
+		print("="*80)
+		print("Rerouting new circuit...")
+		print("="*80)
+		do_routing(
+			options["resynthesized_qasm_file"],
+			options["coupling_map"],
+			options["remapped_qasm_file"]
+		)
+
+
 def count_stats(
-	topologies, topology_path,
-	blocks, block_path,
-	synthblocks, synth_path,
-	structure, physical_graph
+	topologies, 
+	topology_path,
+	blocks, 
+	block_path,
+	synthblocks, 
+	synth_path,
+	structure, 
+	physical_graph
 ):
 	pre_stats = []
 	post_stats = []
@@ -115,6 +253,17 @@ def count_stats(
 		sub_stats.append(sub)
 
 	return pre_stats, post_stats, sub_stats, logical_ops
+
+
+def get_block_cnot_count(
+	qasm_file: str
+) -> int:
+	count = 0
+	with open(qasm_file, "r") as f:
+		for line in f:
+			if re.match("cx", line):
+				count += 1
+	return count
 
 
 if __name__ == "__main__":
@@ -162,7 +311,6 @@ if __name__ == "__main__":
 
 	num_q_sqrt = int(re.search("\d+", map_type)[0])
 	num_q = num_q_sqrt ** 2
-	mapping = {k:k for k in range(num_q)}
 
 	pre_stats, post_stats, sub_stats, logical_ops = count_stats(
 		tops, topo_path,
@@ -170,7 +318,7 @@ if __name__ == "__main__":
 		circs, synth_path,
 		structure, physical,
 	)
-	swap_counts = count_swaps(mapped_path, mapping, num_q, tops, logical_ops)
+	swap_counts = count_swaps(mapped_path, num_q, tops, logical_ops)
 
 	# Get the "unsynthesized" numbers
 	# route the original circuit without synthesizing
@@ -194,7 +342,7 @@ if __name__ == "__main__":
 		blocks, block_path,
 		structure, physical,
 	)
-	swaps_nosynth = count_swaps(mapped_nosynth_path, mapping, num_q, tops,
+	swaps_nosynth = count_swaps(mapped_nosynth_path, num_q, tops,
 		logical_ops_nosynth)
 
 	# for each block file
