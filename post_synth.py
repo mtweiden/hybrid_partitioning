@@ -87,7 +87,7 @@ def count_swaps(
 	return swap_counts
 
 
-def compare_blocks(
+def replace_blocks(
 	options: dict[str, Any],
 ):
 	topologies = sorted(listdir(options["subtopology_dir"]))
@@ -160,58 +160,59 @@ def compare_blocks(
 	reroute_flag = False
 	if not exists(options["resynthesis_dir"]):
 		mkdir(options["resynthesis_dir"])
-	# Compare each block
-	for block_num in range(len(topologies)):
-		nosynth_cnots = nosynth_count[block_num] + 3*nosynth_swaps[block_num]
-		flow_cnots = flow_count[block_num] + 3*flow_swaps[block_num]
+	if not exists(options["remapped_qasm_file"]):
+		# Compare each block
+		for block_num in range(len(topologies)):
+			nosynth_cnots = nosynth_count[block_num] + 3*nosynth_swaps[block_num]
+			flow_cnots = flow_count[block_num] + 3*flow_swaps[block_num]
 
-		#print(
-		#	f"block_{block_num}:\n\tNo-synth:\t{nosynth_cnots} "
-		#	f"({nosynth_count[block_num]} cnots, {3*nosynth_swaps[block_num]} from swaps)\n\t"
-		#	f"With-synth:\t{flow_cnots} ({flow_count[block_num]} cnots, "
-		#	f"{3*flow_swaps[block_num]} from swaps)"
-		#)
-		if nosynth_cnots < flow_cnots:
-			reroute_flag = True
-			print(
-				f"Synthesized block {block_num} is {flow_cnots/nosynth_cnots}x"
-				" bigger, replacing with original block..."
+			#print(
+			#	f"block_{block_num}:\n\tNo-synth:\t{nosynth_cnots} "
+			#	f"({nosynth_count[block_num]} cnots, {3*nosynth_swaps[block_num]} from swaps)\n\t"
+			#	f"With-synth:\t{flow_cnots} ({flow_count[block_num]} cnots, "
+			#	f"{3*flow_swaps[block_num]} from swaps)"
+			#)
+			if nosynth_cnots < flow_cnots:
+				reroute_flag = True
+				print(
+					f"Synthesized block {block_num} is {round(flow_cnots/nosynth_cnots,3)}x"
+					" bigger, replacing with original block..."
+				)
+				# Replace block
+				with open(f"{options['partition_dir']}/{blocks[block_num]}", "r") as f:
+					qasm = f.read()
+				with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
+					f.write(qasm)
+			else:
+				with open(f"{options['synthesis_dir']}/{blocks[block_num]}", "r") as f:
+					qasm = f.read()
+				with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
+					f.write(qasm)
+
+		if reroute_flag:
+			# Recreate new synthesized qasm file
+			new_circ = Circuit(options['num_p'])
+			for block_num in range(len(structure)):
+				with open(
+					f"{options['resynthesis_dir']}/{blocks[block_num]}", "r"
+				) as f:
+					subcircuit_qasm = f.read()
+				subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+				group_len = subcircuit.size
+				qudit_group = [structure[block_num][x] for x in range(group_len)]
+				new_circ.append_circuit(subcircuit, qudit_group)
+			
+			with open(options["resynthesized_qasm_file"], "w") as f:
+				f.write(OPENQASM2Language().encode(new_circ))
+
+			print("="*80)
+			print("Rerouting new circuit...")
+			print("="*80)
+			do_routing(
+				options["resynthesized_qasm_file"],
+				options["coupling_map"],
+				options["remapped_qasm_file"]
 			)
-			# Replace block
-			with open(f"{options['partition_dir']}/{blocks[block_num]}", "r") as f:
-				qasm = f.read()
-			with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
-				f.write(qasm)
-		else:
-			with open(f"{options['synthesis_dir']}/{blocks[block_num]}", "r") as f:
-				qasm = f.read()
-			with open(f"{options['resynthesis_dir']}/{blocks[block_num]}", "w") as f:
-				f.write(qasm)
-
-	if reroute_flag:
-		# Recreate new synthesized qasm file
-		new_circ = Circuit(options['num_p'])
-		for block_num in range(len(structure)):
-			with open(
-				f"{options['resynthesis_dir']}/{blocks[block_num]}", "r"
-			) as f:
-				subcircuit_qasm = f.read()
-			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
-			group_len = subcircuit.size
-			qudit_group = [structure[block_num][x] for x in range(group_len)]
-			new_circ.append_circuit(subcircuit, qudit_group)
-		
-		with open(options["resynthesized_qasm_file"], "w") as f:
-			f.write(OPENQASM2Language().encode(new_circ))
-
-		print("="*80)
-		print("Rerouting new circuit...")
-		print("="*80)
-		do_routing(
-			options["resynthesized_qasm_file"],
-			options["coupling_map"],
-			options["remapped_qasm_file"]
-		)
 
 
 def count_stats(

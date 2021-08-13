@@ -707,12 +707,12 @@ def run_stats(
 			structure[block_num],
 			options = options,
 		)
-	if not post_stats:
-		string = "PRE-\n"
-	elif not resynthesized:
+	if resynthesized:
+		string = "REPLACE-\n"
+	elif post_stats:
 		string = "POST-\n"
 	else:
-		string = "RESYNTH-\n"
+		string = "PRE-\n"
 
 	string += (
 		f"    direct ops      : {options['direct_ops']}\n"
