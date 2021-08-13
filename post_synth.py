@@ -285,9 +285,11 @@ if __name__ == "__main__":
 	full_name  = args.synthesis_files_dir.split("/")[-1]
 	short_name = full_name.split(edge_scheme)[0]
 	block_path = f"block_files/{short_name}"
-	synth_path = f"synthesis_files/{full_name}"
+	#synth_path = f"synthesis_files/{full_name}"
+	synth_path = f"synthesis_files/{full_name}_resynth"
 	topo_path = f"subtopology_files/{full_name}"
-	mapped_path = f"mapped_qasm/{full_name}"
+	#mapped_path = f"mapped_qasm/{full_name}"
+	mapped_path = f"mapped_qasm/{full_name}_remapped"
 
 	# load physical graph
 	map_type = re.search("mesh_\d+_\d+", short_name)[0]
@@ -319,7 +321,7 @@ if __name__ == "__main__":
 		circs, synth_path,
 		structure, physical,
 	)
-	swap_counts = count_swaps(mapped_path, num_q, tops, logical_ops)
+	swap_counts = count_swaps(mapped_path, num_q, len(tops), logical_ops)
 
 	# Get the "unsynthesized" numbers
 	# route the original circuit without synthesizing
@@ -343,7 +345,7 @@ if __name__ == "__main__":
 		blocks, block_path,
 		structure, physical,
 	)
-	swaps_nosynth = count_swaps(mapped_nosynth_path, num_q, tops,
+	swaps_nosynth = count_swaps(mapped_nosynth_path, num_q, len(tops),
 		logical_ops_nosynth)
 
 	# for each block file
