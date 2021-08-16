@@ -114,9 +114,16 @@ def setup_options(
 		raise RuntimeError(
 			f"{args.map_type} is not a valid coupling map type."
 		)
-	coupling_map = (
-		f"coupling_maps/{args.map_type}_{num_p_sqrt}_{num_p_sqrt}"
-	)
+	if args.map_type == "mesh":
+		coupling_map = (
+			f"coupling_maps/{args.map_type}_{num_p_sqrt}_{num_p_sqrt}"
+		)
+		num_p = num_p_sqrt ** 2,
+	else: #elif args.map_type == "linear":
+		coupling_map = (
+			f"coupling_maps/{args.map_type}_{num_q}"
+		)
+		num_p = num_q
 
 	# Select partitioner
 	valid_partitioners = ["scan", "greedy", "custom"]
@@ -129,13 +136,13 @@ def setup_options(
 	options = {
 		"blocksize"	 : args.blocksize,
 		"coupling_map"   : coupling_map,
+		"num_p" : num_p,
 		"shortest_path" : args.shortest_path,
 		"nearest_physical"  : args.nearest_physical,
 		"mst_path" : args.mst_path,
 		"mst_density" : args.mst_density,
 		"partitioner" : partitioner,
 		"checkpoint_as_qasm" : True,
-		"num_p" : num_p_sqrt ** 2,
 		"direct_ops" : 0,
 		"indirect_ops" : 0,
 		"external_ops" : 0,

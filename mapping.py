@@ -65,7 +65,6 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	# Gather circuit data
 	circ = QuantumCircuit.from_qasm_file(input_qasm_file)
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
-
 	# Set up Passes
 	seed = 42
 	router = SabreSwap(
