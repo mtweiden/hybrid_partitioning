@@ -274,6 +274,9 @@ if __name__ == "__main__":
 		default="subtopology_files/add_9_mesh_3_3_blocksize_4_custom_nearest-physical",
 		help="synthesis qasm",
 	)
+	parser.add_argument(
+		"--replacement", action="store_true", help="use replacement data or original"
+	)
 	args = parser.parse_args()
 
 	schemes = ["_shortest-path", "_nearest-physical", "_mst-path", "_mst-density"]
@@ -285,11 +288,13 @@ if __name__ == "__main__":
 	full_name  = args.synthesis_files_dir.split("/")[-1]
 	short_name = full_name.split(edge_scheme)[0]
 	block_path = f"block_files/{short_name}"
-	#synth_path = f"synthesis_files/{full_name}"
-	synth_path = f"synthesis_files/{full_name}_resynth"
 	topo_path = f"subtopology_files/{full_name}"
-	#mapped_path = f"mapped_qasm/{full_name}"
-	mapped_path = f"mapped_qasm/{full_name}_remapped"
+	if args.replacement:
+		synth_path = f"synthesis_files/{full_name}_resynth"
+		mapped_path = f"mapped_qasm/{full_name}_remapped"
+	else:
+		synth_path = f"synthesis_files/{full_name}"
+		mapped_path = f"mapped_qasm/{full_name}"
 
 	# load physical graph
 	map_type = re.search("mesh_\d+_\d+", short_name)[0]
