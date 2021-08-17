@@ -69,7 +69,7 @@ if __name__ == '__main__':
 	)
 	parser.add_argument("--coupling_map", dest="map_type", action="store",
 		default="mesh", type=str,
-		help="[mesh | linear]"
+		help="[mesh | linear | falcon]"
 	)
 	args = parser.parse_args()
 	#endregion
@@ -257,7 +257,3 @@ if __name__ == '__main__':
 		if not exists(options["remapped_qasm_file"]):
 			replace_blocks(options)
 		print(run_stats(options, resynthesized=True))
-
-		
-		
-

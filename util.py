@@ -109,7 +109,7 @@ def setup_options(
 	num_p_sqrt = ceil(sqrt(num_q))
 
 	# Select coupling map
-	valid_map_types = ["mesh", "linear"]
+	valid_map_types = ["mesh", "linear", "falcon"]
 	if not args.map_type in valid_map_types:
 		raise RuntimeError(
 			f"{args.map_type} is not a valid coupling map type."
@@ -119,11 +119,27 @@ def setup_options(
 			f"coupling_maps/{args.map_type}_{num_p_sqrt}_{num_p_sqrt}"
 		)
 		num_p = num_p_sqrt ** 2,
-	else: #elif args.map_type == "linear":
+	elif args.map_type == "linear":
 		coupling_map = (
 			f"coupling_maps/{args.map_type}_{num_q}"
 		)
 		num_p = num_q
+	else: #elif args.map_type == "falcon"
+		#sizes = [16, 27, 65]
+		if num_q <= 16:
+			coupling_map = f"coupling_maps/falcon_16"
+			num_p = 16
+		elif num_q <= 27:
+			coupling_map = f"coupling_maps/falcon_27"
+			num_p = 27
+		elif num_q <= 65:
+			coupling_map = f"coupling_maps/falcon_65"
+			num_p = 65
+		else:
+			raise RuntimeError(
+				f"{num_q} qubits is too large for the falcon map type."
+			)
+
 
 	# Select partitioner
 	valid_partitioners = ["scan", "greedy", "custom"]
