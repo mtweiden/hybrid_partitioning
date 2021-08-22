@@ -28,14 +28,7 @@ if __name__ == '__main__':
 	files.remove("structure.pickle")
 
 	target_name = args.partition_dir.split("/")[-1]
-	if args.edge_scheme == "shortest_path":
-		target_name += "_shortest-path"
-	elif args.edge_scheme == "nearest_physical":
-		target_name += "_nearest-physical"
-	elif args.edge_scheme == "mst_path":
-		target_name += "_mst-path"
-	elif args.edge_scheme == "mst_density":
-		target_name += "_mst-density"
+	target_name += "_kernel"
 	block_name = files[args.block_number].split(".qasm")[0]
 
 	qudit_group = load_circuit_structure(args.partition_dir)[args.block_number]
