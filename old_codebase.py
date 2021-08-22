@@ -61,11 +61,11 @@ def call_old_codebase_leap(
 	project['gateset'] = gateset
 	project['compiler_class'] = leap_compiler.LeapCompiler
 	project['verbosity'] = 2
-	max_weight = 1
-	for edge in graph:
-		if edge[2] > max_weight:
-			max_weight = edge[2]
-	project['max_gateset_weight'] = max_weight
+	#max_weight = 1
+	#for edge in graph:
+	#	if edge[2] > max_weight:
+	#		max_weight = edge[2]
+	#project['max_gateset_weight'] = max_weight
 	project["max_synth_procs"] = num_synth_procs
 	project["num_tasks"] = num_tasks(num_synth_procs)
 	#project['heuristic'] = weighted_astar
@@ -115,30 +115,30 @@ def synthesize(
 	block_path = f"{options['partition_dir']}/{block_name}.qasm"
 	subtopology_path = (
 		f"subtopology_files/{options['target_name']}/"
-		f"{block_name}_subtopology.pickle"
+		f"{block_name}_kernel.pickle"
 	)
 	if check_for_leap_files(synth_dir):
 		print(f"  Loading block {block_name}")
 		subcircuit_qasm = parse_leap_files(synth_dir)
 	else:
 		# Load subtopology
-		weighted_topology = load_block_topology(subtopology_path)
-		subtopology = weighted_topology.subgraph(qudit_group)
+		subtopology = load_block_topology(subtopology_path)
+		#weighted_topology = load_block_topology(subtopology_path)
+		#subtopology = weighted_topology.subgraph(qudit_group)
 		# Get rid of weights for now
-		# TODO: Add weighted edges to synthesis function
-		q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
-		sub_edges = [
-			(q_map[e[0]], q_map[e[1]], subtopology[e[0]][e[1]]["weight"]) 
-			for e in subtopology.edges
-		]
+		## TODO: Add weighted edges to synthesis function
+		#q_map = {qudit_group[k]:k for k in range(len(qudit_group))}
+		#sub_edges = [
+		#	(q_map[e[0]], q_map[e[1]]) for e in subtopology
+		#]
 		# Load circuit
 		subcircuit = load_block_circuit(block_path, options)
 		unitary = subcircuit.get_unitary().get_numpy()
 		# Synthesize
-		print("Using edges: ", sub_edges)
+		print("Using edges: ", subtopology)
 		subcircuit_qasm = call_old_codebase_leap(
 			unitary,
-			sub_edges,
+			subtopology,
 			synth_dir,
 		)
 		with open(f"{synth_dir}.qasm", "w") as f:

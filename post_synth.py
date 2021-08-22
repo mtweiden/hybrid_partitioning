@@ -79,11 +79,6 @@ def count_swaps(
 				if break_flag:
 					break
 
-	#print(swaps)
-	#tot = 0
-	#for i in range(num_blocks):
-	#	tot += swap_counts[i]
-	#print(tot)
 	return swap_counts
 
 
@@ -279,14 +274,8 @@ if __name__ == "__main__":
 	)
 	args = parser.parse_args()
 
-	schemes = ["_shortest-path", "_nearest-physical", "_mst-path", "_mst-density"]
-	edge_scheme = ""
-	for scheme in schemes:
-		if scheme in args.synthesis_files_dir:
-			edge_scheme = scheme
-
 	full_name  = args.synthesis_files_dir.split("/")[-1]
-	short_name = full_name.split(edge_scheme)[0]
+	short_name = full_name.split("_kernel")[0]
 	block_path = f"block_files/{short_name}"
 	topo_path = f"subtopology_files/{full_name}"
 	if args.replacement:
@@ -297,7 +286,7 @@ if __name__ == "__main__":
 		mapped_path = f"mapped_qasm/{full_name}"
 
 	# load physical graph
-	map_type = re.search("mesh_\d+_\d+", short_name)[0]
+	map_type = re.search("mesh_\d+", short_name)[0]
 	coupling_map = f"coupling_maps/{map_type}"
 	with open(coupling_map, "rb") as f:
 		edge_set = pickle.load(f)
@@ -369,45 +358,31 @@ if __name__ == "__main__":
 		line += f"{pre_stats[i][1]}, "
 		# 2 indirect ops
 		line += f"{pre_stats[i][2]}, "
-		# 3 indirect volume
-		line += f"{pre_stats[i][3]}, "
-		# 4 internal volume
-		line += f"{pre_stats[i][4]}, "
 		# 5 external ops
-		line += f"{pre_stats[i][5]}, "
-		# 6 external volume
-		line += f"{pre_stats[i][6]}, "
-		# 7 total volume
-		line += f"{pre_stats[i][7]}, "
+		line += f"{pre_stats[i][3]}, "
 		# 8 cnot count
-		line += f"{pre_stats[i][8]}, "
+		line += f"{pre_stats[i][4]}, "
 		# unsynthed cnot count
-		line += f"{post_nosynth[i][8] + 3*swaps_nosynth[i]}, "
+		line += f"{post_nosynth[i][4] + 3*swaps_nosynth[i]}, "
 
 		## Post synth
 		# 1 direct ops
 		line += f"{post_stats[i][1]}, "
 		# 5 external ops
-		line += f"{post_stats[i][5]}, "
-		# 6 external volume
-		line += f"{post_stats[i][6]}, "
+		line += f"{post_stats[i][3]}, "
 		# 8 cnot count
-		line += f"{post_stats[i][8]}, "
+		line += f"{post_stats[i][4]}, "
 
 		# swap count
 		line += f"{swap_counts[i]}, "
 		# total cnots
-		line += f"{post_stats[i][8] + 3*swap_counts[i]}, "
+		line += f"{post_stats[i][4] + 3*swap_counts[i]}, "
 
 		## Subtopology
 		# 0 number of edges
 		line += f"{sub_stats[i][0]}, "
-		# 1 physical edges
-		line += f"{sub_stats[i][1]}, "
-		# 2 logical edges
-		line += f"{sub_stats[i][2]}, "
-		# 3 edge path sum
-		line += f"{sub_stats[i][3]}"
+		# 3 kernel name
+		line += f"{sub_stats[i][1]}"
 
 		print(line)
 
@@ -416,9 +391,9 @@ if __name__ == "__main__":
 	origcx = 0
 	origswap = 0
 	for i in range(len(tops)):
-		cx += post_stats[i][8]
+		cx += post_stats[i][4]
 		swap += swap_counts[i]
-		origcx += post_nosynth[i][8]
+		origcx += post_nosynth[i][4]
 		origswap += swaps_nosynth[i]
 	print(f"Original cx: {origcx}")
 	print(f"Original swaps: {origswap}")

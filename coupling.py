@@ -75,14 +75,13 @@ def make_coupling_map(
 ) -> Sequence[Sequence[int]] | None:
     if coupling_type == "linear":
         coup_map = linear(num_q = num_q)
-        output_name = "%s_%d" %(coupling_type, num_q)
+        output_name = f"{coupling_type}_{num_q}"
     elif coupling_type == "mesh":
         n = ceil(sqrt(num_q))
         coup_map = mesh(n = n)
-        output_name = "%s_%d_%d" %(coupling_type, n, n)
+        output_name = f"{coupling_type}_{n**2}"
     elif coupling_type == "all" or coupling_type == "alltoall":
         coup_map = alltoall(num_q = num_q)
-        output_name = "%s_%d" %(coupling_type, num_q)
     else:
         # If there's no such coupling map type, use all to all
         print("No such coupling map type (%s), using all-to-all" 
@@ -113,7 +112,7 @@ def get_coupling_map(
         if coupling_type_or_file == "mesh":
             n = ceil(sqrt(num_q))
             num_p = n ** 2
-            file_name = "%s_%d_%d" %(coupling_type_or_file, n, n)
+            file_name = "%s_%d" %(coupling_type_or_file, num_p)
         else:
             num_p = num_q
             file_name = "%s_%d" %(coupling_type_or_file, num_q)
@@ -132,12 +131,13 @@ def get_coupling_map(
 
 
 if __name__ == "__main__":
-    get_coupling_map("mesh", 2, True)
     get_coupling_map("mesh", 4, True)
-    get_coupling_map("mesh", 8, True)
+    get_coupling_map("mesh", 9, True)
     get_coupling_map("mesh", 16, True)
-    get_coupling_map("mesh", 32, True)
+    get_coupling_map("mesh", 25, True)
+    get_coupling_map("mesh", 36, True)
     get_coupling_map("mesh", 64, True)
+    get_coupling_map("mesh", 121, True)
     get_coupling_map("mesh", 128, True)
 
     get_coupling_map("linear", 5, True)

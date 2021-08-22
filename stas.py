@@ -13,7 +13,7 @@ from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
-from weighted_topology import get_hybrid_topology, get_logical_operations, run_stats
+from weighted_topology import get_logical_operations, run_stats, select_kernel
 from util import (
 	load_circuit_structure,
 	save_block_topology,
@@ -39,22 +39,6 @@ if __name__ == '__main__':
 	parser.add_argument(
 		"--blocksize", dest="blocksize", action="store", nargs='?', default=3,
 		type=int, help="synthesis block size"
-	)
-	parser.add_argument(
-		"--shortest_path", action="store_true",
-		help="add logical edges using shortest_path scheme"
-	)
-	parser.add_argument(
-		"--nearest_physical", action="store_true",
-		help="add logical edges using nearest_physical scheme"
-	)
-	parser.add_argument(
-		"--mst_path", action="store_true",
-		help="add logical edges using mst_path scheme"
-	)
-	parser.add_argument(
-		"--mst_density", action="store_true",
-		help="add logical edges using mst_density scheme"
 	)
 	parser.add_argument(
 		"--partitioner", dest="partitioner", action="store", nargs="?", 
@@ -116,15 +100,15 @@ if __name__ == '__main__':
 			circuit = OPENQASM2Language().decode(f.read())
 		
 		if options["partitioner"] == "greedy":
-			partitioner = GreedyPartitioner(args.blocksize, "cost_based")
-			#partitioner = GreedyPartitioner(args.blocksize)
+			#partitioner = GreedyPartitioner(args.blocksize, "cost_based")
+			partitioner = GreedyPartitioner(args.blocksize)
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
 
 		machine_edges = get_logical_operations(circuit)
 		logical_machine = MachineModel(
-			options["num_p"], 
-			machine_edges
+			num_qudits = options["num_p"],
+			coupling_graph = machine_edges
 		)
 		data = {
 			"machine_model": logical_machine,
@@ -149,7 +133,7 @@ if __name__ == '__main__':
 			block_names.append(bf.split(".pickle")[0])
 	#endregion
 
-	# Subtopology analysis
+	# Kernel Fitting
 	#region subtopology
 	print("="*80)
 	print(f"Doing subtopology analysis on {options['target_name']}...")
@@ -168,17 +152,18 @@ if __name__ == '__main__':
 			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
 
-			subtopology = get_hybrid_topology(
+			subtopology = select_kernel(
 				block_path,
-				options["coupling_map"], 
 				structure[block_num],
 				options
 			)
 			subtopology_path = (
 				f"{options['subtopology_dir']}/{block_names[block_num]}"
-				f"_subtopology.pickle"
+				f"_kernel.pickle"
 			)
+			# Saving the edge list
 			save_block_topology(subtopology, subtopology_path)
+
 		summary = get_summary(options, block_files)
 		with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
 			f.write(summary)

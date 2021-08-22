@@ -14,7 +14,9 @@ from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 from pickle import load
 
-from util import get_mapping_results, get_original_count, get_remapping_results, load_block_circuit
+from networkx.classes.function import degree
+
+from util import get_mapping_results, get_original_count, get_remapping_results, load_block_circuit, load_block_topology
 from networkx import Graph, shortest_path_length
 import networkx
 from networkx.algorithms.shortest_paths.generic import shortest_path
@@ -153,97 +155,21 @@ def get_direct_edges(
 	]
 
 
-def apply_frequencies(
-	logical_operations : Sequence[Sequence[int]],
-	hybrid_topology : Graph,
-) -> Graph:
-	hybrid_graph = hybrid_topology.copy()
-	for (u,v) in hybrid_graph.edges:
-		hybrid_graph[u][v]["frequency"] = 0
-	# Increment the frequency for each edge involved in some operation
-	for (u,v) in logical_operations:
-		path = shortest_path(hybrid_graph, u, v)
-		for i in range(len(path) - 1):
-			if hybrid_graph.has_edge(path[i], path[i+1]):
-				hybrid_graph[path[i]][path[i+1]]["frequency"] += 1
-	return hybrid_graph
-
-
-def get_volume(
-	operations : Sequence[Sequence[int]],
-	hybrid_topology : Graph,
-) -> int:
-	"""
-	Make sure that apply_freqencies has already been called!!
-	"""
-	#ops = set(operations)
-	ops = operations
-	volume = 0
-	for (u,v) in ops:
-		path = shortest_path(hybrid_topology, u, v)
-		for i in range(len(path) - 1):
-			#freq = hybrid_topology[path[i]][path[i+1]]["frequency"]
-			dist = hybrid_topology[path[i]][path[i+1]]["weight"]
-			#volume += freq / dist
-			volume += dist
-
-	return volume
-
-
-def estimate_cnot_count(
-	operations : Sequence[Sequence[int]],
-	hybrid_topology : Graph,
-	qudit_group : Sequence[int] | None = None,
-) -> int:
-	graph = hybrid_topology.copy() if qudit_group is None else \
-		hybrid_topology.subgraph(qudit_group)
-	estimate = 0
-	for op in operations:
-		dist = shortest_path_length(graph, op[0], op[1], weight="weight")
-		cost = 3 * (dist - 1) + 1 
-		# Do relabeling for external gates
-		if cost > 1:
-			### OPTION B: if logical edges are reused, assume they've been
-			### 	changed to physical edges by SWAPs
-			###	*May result in underestimates for blocks with many unparti-
-			###  tionable gates
-			if graph.has_edge(op[0], op[1]):
-				graph[op[0]][op[1]]["weight"] = 1
-			elif graph.has_edge(op[1], op[0]):
-				graph[op[1]][op[0]]["weight"] = 1
-
-		estimate += cost
-	return estimate
-
-
 def collect_stats_tuples(
 	circuit : Circuit,
 	physical_graph : Graph, 
-	hybrid_graph : Graph,
+	kernel : Graph | Sequence[tuple[int]],
 	qudit_group : Sequence[int],
 	blocksize : int | None = None,
 	options : dict[str, Any] | None = None,
 ) -> Sequence:
 	# NOTE: may break if idle qudit are removed
-	hybrid_copy = hybrid_graph.copy()
 	blocksize = len(qudit_group) if blocksize is None else blocksize
 	logical_ops = get_logical_operations(circuit, qudit_group)
-	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
 
 	direct = get_direct_edges(logical_ops, physical_graph)
 	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
 	external = get_external_edges(logical_ops, physical_graph, qudit_group)
-
-	direct_volume = get_volume(direct, hybrid_copy)
-	indirect_volume = get_volume(indirect, hybrid_copy) 
-	external_volume = get_volume(external, hybrid_copy) 
-	total_volume = sum([direct_volume, indirect_volume, external_volume])
-
-	logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
-		not in physical_graph.edges and (v,u) not in physical_graph.edges]
-	
-	subgraph = hybrid_copy.subgraph(qudit_group)
-	path_sum = sum([subgraph[x[0]][x[1]]["weight"] for x in subgraph.edges])
 
 	active_qudits = circuit.get_active_qudits()
 
@@ -256,63 +182,61 @@ def collect_stats_tuples(
 		len(direct),
 		# indirect ops
 		len(indirect),
-		# indirect volume
-		indirect_volume,
-		# internal volume
-		indirect_volume + len(direct),
 		# external ops
 		len(external),
-		# external volume
-		external_volume,
-		# total volume
-		total_volume,
 		# cnot count
 		total_ops,
 	)
 
 	subtopology_stats = (
 		# number of edges
-		len(list(subgraph.edges)),
-		# physical edges
-		len(list(subgraph.edges)) - len(logical_edges),
-		# logical edges
-		len(logical_edges),
-		# edge path sum
-		path_sum,
+		len(kernel),
+		# Kernel name
+		kernel_name(kernel, blocksize)
 	)
 
 	return (pre_stats, subtopology_stats)
 
+
+def kernel_name(kernel, blocksize) -> str:
+	if len(kernel) == 4:
+		kernel_type = "ring"
+	elif len(kernel) < 3:
+		kernel_type = "linear"
+	else:
+		# kernel is a star if there is a degree 3 vertex
+		degrees = {x:0 for x in range(blocksize)}
+		for edge in kernel:
+			degrees[edge[0]] += 1
+			degrees[edge[1]] += 1
+		if max(degrees.values()) == 3:
+			kernel_type = "star"
+		elif max(degrees.values()) == 2:
+			kernel_type = "linear"
+		else:
+			kernel_type = "unknown"
+	return kernel_type
+
+
 def collect_stats(
 	circuit : Circuit,
 	physical_graph : Graph, 
-	hybrid_graph : Graph,
+	kernel: Sequence[tuple[int]],
 	qudit_group : Sequence[int],
 	blocksize : int | None = None,
 	options : dict[str, Any] | None = None,
 ) -> str:
 	# NOTE: may break if idle qudit are removed
-	hybrid_copy = hybrid_graph.copy()
 	blocksize = len(qudit_group) if blocksize is None else blocksize
 	logical_ops = get_logical_operations(circuit, qudit_group)
-	hybrid_copy = apply_frequencies(logical_ops, hybrid_copy)
 
 	direct = get_direct_edges(logical_ops, physical_graph)
 	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
 	external = get_external_edges(logical_ops, physical_graph, qudit_group)
-
-	direct_volume = get_volume(direct, hybrid_copy)
-	indirect_volume = get_volume(indirect, hybrid_copy) 
-	external_volume = get_volume(external, hybrid_copy) 
-	total_volume = sum([direct_volume, indirect_volume, external_volume])
-
-	logical_edges = [(u,v) for (u,v) in hybrid_graph.edges if (u,v) 
-		not in physical_graph.edges and (v,u) not in physical_graph.edges]
 	
-	subgraph = hybrid_copy.subgraph(qudit_group)
-	path_sum = sum([subgraph[x[0]][x[1]]["weight"] for x in subgraph.edges])
-
 	active_qudits = circuit.get_active_qudits()
+
+	kernel_type = kernel_name(kernel, blocksize)
 
 	stats = (
 		f"INFO -\n"
@@ -321,30 +245,21 @@ def collect_stats(
 		f"  active: {len(active_qudits)}\n"
 		f"  cnot count: {len(logical_ops)}\n"
 		f"OPERATION COUNTS & VOLUME-\n"
-#		f"  total distinct operations : {len(logical_ops)}\n"
-#		f"  total block volume : {total_volume}\n"
 		f"	direct ops	  : {len(direct)}\n"
-#		f"	direct volume   : {direct_volume}\n"
 		f"	indirect ops	: {len(indirect)}\n"
-		f"	indirect volume : {indirect_volume}\n"
 		f"	external ops	: {len(external)}\n"
-		f"	external volume : {external_volume}\n"
 		f"SUBTOPOLOGY -\n"
-		f"  number of edges : {len(list(subgraph.edges))}\n"
-		f"  number of logical : {len(logical_edges)}\n"
-		f"  path sum : {path_sum}\n"
+		f"  kernel : {kernel_type}"
+		f"  {kernel}"
+		f"  number of edges : {len(list(kernel))}\n"
 	)
 
 	total_ops = sum([len(direct), len(indirect), len(external)])
 
 	if options is not None:
 		options["direct_ops"] += len(direct)
-		options["direct_volume"] += direct_volume
 		options["indirect_ops"] += len(indirect)
-		options["indirect_volume"] += indirect_volume
 		options["external_ops"] += len(external)
-		options["external_volume"] += external_volume
-		options["total_volume"] += total_volume
 		if total_ops > options["max_block_length"]:
 			options["max_block_length"] = total_ops
 		if total_ops < options["min_block_length"] or \
@@ -354,172 +269,49 @@ def collect_stats(
 	return stats
 
 
-def cost_function(distance: int, frequency: int) -> float:
-	"""
-	Give the density (path distance / frequency) of the edge.
-
-	Args:
-		distance (int): Shortest path distance in the physical topology.
-
-		frequency (int): Number of occurences of an edge in the circuit.
-
-	Returns:
-		cost (int): The result of the cost function. 
-	"""
-	# Number of CNOTs needed to SWAP
-	#return 3 * 2 * (distance)
-	# Density
-	return distance / frequency
+def get_num_vertex_uses(logical_operations, num_qudits) -> dict[int,int]:
+	degrees = {x:0 for x in range(num_qudits)}
+	for a,b in logical_operations:
+		degrees[a] += 1
+		degrees[b] += 1
+	return degrees
 
 
-def add_logical_edges(
-	logical_operations : Sequence[Sequence[int]],
-	frequencies : Dict[Tuple[int,int], int],
-	qudit_group : Sequence[int],
-	physical_topology : Graph,
-	hybrid_topology : Graph,
-	options : dict[str],
-) -> Graph:
-	"""
-	Add a logical edge to either hybrid graph based off the options passed.
+# NOTE: only to be used for 4 qudits
+def best_ring_kernel(op_set, freqs) -> Sequence[tuple[int]]:
+	# Keep the first 3 edges. If there's a star, remove the third edge
+	# and form a ring. If there's a line, add the last edge to make it
+	# a ring.
+	edges = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
 
-	Args:
-		logical_operations (list[tuple[int]]): The logical operations that may
-			require the addition of logical edges.
-
-		frequencies (Dict[Tuple[int,int], int]): The number of times each edge
-			appears in the circuit.
-
-		qudit_group (Sequence[int]): The qudits in the current block.
-
-		physical_topology (Graph): Graph of the physical topology.
-
-		hybrid_topology (Graph): Graph of the hybrid topology.
-
-		options (dict[str, Any]): 
-			shortest_path (bool): Connect vertices as end points using the
-				shortest direct path in the physical topology. Weights 
-				represent the shortest path distance in the physical topology.
-				(default)
-
-			nearest_physical (bool): Add logical edges between members of the
-				qudit_group. Considers the two separate possibly disjoint 
-				connected components containing vertex_a and vertex_b, and 
-				finds the shortest path between these two sets. Here, logical
-				edges do not directly correspond with edges in the circuit.
-				Weights represent the shortest path distance in the physical
-				topology.
-
-			mst_path (bool): Construct an Minimum Spanning Tree for the
-				subgraph containing members of the qudit group. Weights 
-				represent the shortest path distance in the physical topology.
-				This means edges are added in order of least to greatest path
-				length.
-
-			mst_density (bool): Construct an Minimum Spanning Tree for the
-				subgraph containing members of the qudit group. Weights 
-				represent the edge's density, or the shortest path distance in 
-				the physical topology / the edge's frequency. This means edges
-				are added in order of least to greatest density.
-			
-			TODO: Handle case where MST isn't enough, when do we need to add
-				more logical edges?
-		
-	Returns:
-		updated_graph (Graph): Return the new hybird_graph.
-	"""
-	hybrid_graph = hybrid_topology.copy()
-	external_edges = get_external_edges(logical_operations, physical_topology,
-		qudit_group)
-	
-	if options["nearest_physical"]:
-		# Shortest path between vertices physically connected to vertex_a and
-		# vertices physically connected to vertex_b
-		subgraph = physical_topology.subgraph(qudit_group)
-
-		for (vertex_a, vertex_b) in external_edges:
-			candidates_a = list(shortest_path(subgraph, vertex_a).keys())
-			candidates_b = list(shortest_path(subgraph, vertex_b).keys())
-			best_dist = physical_topology.number_of_nodes()
-			best_a = vertex_a
-			best_b = vertex_b
-			for a in candidates_a:
-				for b in candidates_b:
-					dist = shortest_path_length(physical_topology, a, b)
-					if dist < best_dist and dist > 0:
-						best_dist = dist
-						best_a = a
-						best_b = b
-				hybrid_graph.add_edge(
-					best_a, best_b, weight=best_dist,
-				)
-	
-	elif options["mst_path"] or options["mst_density"]:
-		# Build a MST in the subgraph by adding the lowest density edges first
-		subgraph = physical_topology.subgraph(qudit_group)
-		# Find all disconected subgroups, add the closest
-		search_qubit = 0
-		reachable = list(shortest_path(subgraph, qudit_group[0]).keys())
-		op_set = set(logical_operations)
-		# While there are still disconnected subgroups
-		while len(reachable) < len(qudit_group):
-			# Find logical operations that corresponds to edges on vertices
-			# that are disconnected. Add then based on least to greatest
-			# density
-			unreachable = list(set(qudit_group) - set(reachable))
-			candidates = []
-			for (u,v) in op_set:
-				if (
-					u in reachable and v in unreachable or
-					v in reachable and u in unreachable
-				):
-					distance = shortest_path_length(physical_topology, u, v)
-					frequency = frequencies[(u,v)]
-					candidates.append((u, v, distance, frequency))
-			# If candidates is empty, that means we have two disjoint sets of
-			# qudits that never interact, so we're done
-			if len(candidates) == 0:
-				if search_qubit >= len(qudit_group) - 1:
-					break
-				else:
-					search_qubit += 1
-					subgraph = hybrid_graph.subgraph(qudit_group)
-					reachable = list(shortest_path(subgraph, 
-						qudit_group[search_qubit]).keys())
-					continue
-			if options["mst_density"]:
-				candidates = sorted(candidates, key=lambda x: x[2]/x[3])
-			else:
-				candidates = sorted(candidates, key=lambda x: x[2])
-			# Frequencies will be added afte all logical edges have been added
-			(u, v, weight, _) = candidates[0]
-			hybrid_graph.add_edge(u, v, weight=weight)
-			subgraph = hybrid_graph.subgraph(qudit_group)
-			reachable = list(shortest_path(subgraph, 
-				qudit_group[search_qubit]).keys())
+	kernel_edges = [edges[x] for x in range(3)]
+	degrees = get_num_vertex_uses(kernel_edges, 4)
+	v = sorted(degrees.keys(), key=lambda x: degrees[x], reverse=True)
+	# Handling star
+	if degrees[v[0]] == 3:
+		removed_edge = kernel_edges.pop(-1)
+		corner_vertex = removed_edge[0] if removed_edge[0] != v[0] \
+			else removed_edge[1]
+		# Add other 2 edges to make a  ring
+		for i in range(1,4):
+			if corner_vertex != v[i]:
+				kernel_edges.append((corner_vertex, v[i]))
+	# Handling line
+	else:
+		# add edge between the two vertices with degree 1
+		kernel_edges.append((v[-1], v[-2]))
+	return kernel_edges
 
 
-	else: # shortest_path or shortest_density assumed
-		subgraph = physical_topology.subgraph(qudit_group)
-		for op in logical_operations:
-			if not is_internal(physical_topology, qudit_group, op):
-				dist = shortest_path_length(
-					physical_topology,
-					op[0],
-					op[1],
-				)
-				hybrid_graph.add_edge(
-					op[0],
-					op[1],
-					weight=dist
-				)
-
-	return hybrid_graph
+def best_star_kernel(vertex_uses) -> Sequence[tuple[int]]:
+	# Return the star graph with the most used vertex in the center.
+	q = sorted(vertex_uses.keys(), key=lambda x: vertex_uses[x],
+		reverse=True)
+	return [(q[1],q[0]), (q[2],q[0]), (q[3],q[0])]
 
 
-def get_hybrid_topology(
+def select_kernel(
 	circuit_file : str, 
-	coupling_file : str,
 	qudit_group : Sequence[int],
 	options : dict[str],
 ) -> Graph | None:
@@ -528,9 +320,7 @@ def get_hybrid_topology(
 	logical edges are added for unperformable gates.
 
 	Args:
-		circuit_file (str): Path to the file specifying the circuit.
-
-		coupling_file (str): Path to the coupling map specifying the topology.
+		circuit_file (str): Path to the file specifying the circuit block.
 
 		qudit_group (Sequence[int]): Only qudit_group members will be used as
 			end points of logical edges.
@@ -538,102 +328,69 @@ def get_hybrid_topology(
 		options (dict[str]): 
 			blocksize (int): Defines the size of qudit groups
 			is_qasm (bool): Whether the circuit_file is qasm or pickle.
+			kernel_dir (str): Directory in which the kernel files are stored.
 
 	Returns:
-		hybrid_edge_set (set[tuple[int]]): The physical topology with logical
-			edges added for unpartitionable gates.
+		kernel_edge_set (set[tuple[int]]): Edges to be used for synthesis.
 	
 	Raises:
 		ValueError: If `blocksize` key is not in `options`.
 	"""
 	if "blocksize" not in options:
 		raise ValueError("The `blocksize` entry in	`options` is required.")
+	elif options["blocksize"] > 4:
+		raise RuntimeError(
+			"Only blocksizes up to 4 are currently supported."
+		)
 
-	# Get the physical topology
-	with open(coupling_file, 'rb') as f:
-		physical_edge_set = load(f)
-	# Add logical weights
-	physical_edge_set = [(u,v,1) for (u,v) in physical_edge_set]
-	
 	# Convert the physical topology to a networkx graph
-	physical_graph = Graph()
-	physical_graph.add_weighted_edges_from(list(physical_edge_set))
-	# Build the hybrid topology starting with physical edges
-	hybrid_graph = physical_graph.subgraph(qudit_group)
-
 	circuit = load_block_circuit(circuit_file, options)
-	logical_ops = get_logical_operations(circuit, qudit_group)
-	freqs = get_frequencies(circuit, qudit_group)
+	logical_ops = get_logical_operations(circuit)
+	op_set = set(logical_ops)
+	freqs = get_frequencies(circuit)
 
-	# Add edges to graph
-	hybrid_graph = add_logical_edges(
-		logical_ops,
-		freqs,
-		qudit_group,
-		physical_graph,
-		hybrid_graph,
-		options
-	)
-	hybrid_graph.add_weighted_edges_from(physical_edge_set)
+	vertex_uses = get_num_vertex_uses(logical_ops, len(qudit_group))
+	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
 
-	stats_str = collect_stats(circuit, physical_graph, hybrid_graph, 
-		qudit_group, options=options)
-	print(stats_str)
-	with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
-		f.write(f"\n{circuit_file.split('/')[-1]}\n")
-		f.write(stats_str)
-	return hybrid_graph
+	# TODO: Generalize kernel selection for blocksizes > 4
+	# Return linear 3 graph, with most used qudit in center
+	if len(qudit_group) == 2 or len(qudit_group) == 3:
+		return list(op_set)
+	elif len(qudit_group) == 4:
+		number_edges = len(op_set)
+		# If there are 2 edges and 4 active qudits, then they are disjoint,
+		# just return the edges that are already used. This should not happen
+		# with the greedy partitioner.
+		if number_edges == 2:
+			return list(op_set)
+		# If there are 3 edges an 4 active qudits, we can have a star or a line.
+		# If a vertex has degree 3, we have a star, else we have a line.
+		elif number_edges == 3:
+			if max(vertex_degrees.keys(), key=lambda x: vertex_degrees[x]) == 3:
+				return best_star_kernel(vertex_uses)
+			# Order the edges so that the most frequent ones are first, this should
+			# be achieved by keeping the original ordering of the logical ops
+			else:
+				return list(op_set)
+		# If there are 4 edges, we can have a ring or a dipper. Based off tests run,
+		# we should just return a ring in this scenario.
+		elif number_edges == 4:
+			return best_ring_kernel(op_set, freqs)
 
-
-def get_best_qudit_group(
-	subcircuit_path : Circuit,
-	old_qudit_group : Sequence[int],
-	options : dict[str, Any],
-) -> Sequence[int]:
-	"""
-	Return the qudit group that yields the maximum number of internal ops. If 
-	the original qudit_group supplied is of length n and n < blocksize, then
-	the first n qudits will be the original qudits.	
-	"""
-	num_to_add = options["blocksize"] - len(old_qudit_group)
-	if num_to_add == 0:
-		return old_qudit_group
-	
-	subcircuit = load_block_circuit(subcircuit_path, options)
-
-	# Get the physical topology
-	with open(options["coupling_map"], 'rb') as f:
-		physical_edge_set = load(f)
-	physical_graph = Graph()
-	physical_graph.add_edges_from(list(physical_edge_set))
-
-	log_ops = get_logical_operations(subcircuit, old_qudit_group)
-	if len(log_ops) == 0:
-		return old_qudit_group
-
-	candidates = []
-	for insider in old_qudit_group:
-		candidates.extend(list(
-			ego_graph(physical_graph, insider, num_to_add).nodes
-		))
-	candidates = [x for x in candidates if x not in old_qudit_group]
-
-	candidate_tuples = itertools.combinations(candidates, num_to_add)
-
-	best_score = 0
-	best_group = old_qudit_group
-	for candi in candidate_tuples:
-		new_group = [x for x in old_qudit_group]
-		for x in candi:
-			new_group.append(x)
-		new_group = sorted(new_group)
-		direct = get_direct_edges(log_ops, physical_graph)
-		indirect = get_indirect_edges(log_ops, physical_graph, new_group)
-		if len(direct) + len(indirect) > best_score:
-			best_score = len(direct) + len(indirect)
-			best_group = new_group
-
-	return sorted(best_group)
+		# If there are 5 edges, We have a ring with a bridge. Tests show that if 
+		# there is a vertex that is used more than the others (by about 3), then
+		# we should select a star. Otherwise select a ring. Add edges based on
+		# their frequencies.
+		elif number_edges == 5:
+			v_uses_list = sorted(vertex_uses.values(), reverse=True)
+			if v_uses_list[0] - 3 >= v_uses_list[1]:
+				return best_star_kernel(vertex_uses)
+			else:
+				return best_ring_kernel(op_set, freqs)
+		# We have K_4
+		# Return a ring
+		else:
+			return best_ring_kernel(op_set, freqs)
 
 
 def run_stats(
@@ -663,11 +420,8 @@ def run_stats(
 
 	# Init all the needed variables
 	options["direct_ops"]      = 0 
-	options["direct_volume"]   = 0 
 	options["indirect_ops"]    = 0 
-	options["indirect_volume"] = 0 
 	options["external_ops"]    = 0 
-	options["external_volume"] = 0 
 
 	# Get the qudit group
 	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
@@ -716,11 +470,8 @@ def run_stats(
 
 	string += (
 		f"    direct ops      : {options['direct_ops']}\n"
-		f"    direct volume   : {options['direct_volume']}\n"
 		f"    indirect ops    : {options['indirect_ops']}\n"
-		f"    indirect volume : {options['indirect_volume']}\n"
 		f"    external ops    : {options['external_ops']}\n"
-		f"    external volume : {options['external_volume']}\n"
 	)
 	if post_stats:
 		string += get_mapping_results(options)
