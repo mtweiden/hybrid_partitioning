@@ -9,6 +9,7 @@ from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
 from bqskit.compiler.passes.partitioning.greedy import GreedyPartitioner
+from bqskit.compiler.passes.partitioning.quick import QuickPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing
@@ -42,7 +43,7 @@ if __name__ == '__main__':
 	)
 	parser.add_argument(
 		"--partitioner", dest="partitioner", action="store", nargs="?", 
-		default="greedy", type=str, help="partitioner to use [scan | greedy]"
+		default="quick", type=str, help="partitioner to use [scan | greedy]"
 	)
 	parser.add_argument(
 		"--dummy_map", action="store_true", help="turn off layout and routing"
@@ -102,6 +103,8 @@ if __name__ == '__main__':
 		if options["partitioner"] == "greedy":
 			#partitioner = GreedyPartitioner(args.blocksize, "cost_based")
 			partitioner = GreedyPartitioner(args.blocksize)
+		elif options["partitioner"] == "quick":
+			partitioner = QuickPartitioner(args.blocksize)
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
 

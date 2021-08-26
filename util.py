@@ -112,7 +112,7 @@ def setup_options(
 
 
 	# Select partitioner
-	valid_partitioners = ["scan", "greedy", "custom"]
+	valid_partitioners = ["scan", "greedy", "quick", "custom"]
 	if not args.partitioner in valid_partitioners:
 		raise RuntimeError(
 			f"{args.partitioner} is not a valid partitioner type."

@@ -352,6 +352,9 @@ def select_kernel(
 	vertex_uses = get_num_vertex_uses(logical_ops, len(qudit_group))
 	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
 
+	# Handle the case where there are no multi-qubit gates
+	if len(op_set) == 0:
+		return []
 	# TODO: Generalize kernel selection for blocksizes > 4
 	# Return linear 3 graph, with most used qudit in center
 	if len(qudit_group) == 2 or len(qudit_group) == 3:
