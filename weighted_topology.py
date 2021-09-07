@@ -276,6 +276,16 @@ def get_num_vertex_uses(logical_operations, num_qudits) -> dict[int,int]:
 		degrees[b] += 1
 	return degrees
 
+# NOTE: only to be used for 4 qudits
+def best_line_kernel(op_set, freqs) -> Sequence[tuple[int]]:
+	edges = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
+	kernel_edges = []
+	if len(edges) < 3:
+		return edges
+	else:
+		for i in range(3):
+			kernel_edges.append(edges[i])
+		return kernel_edges
 
 # NOTE: only to be used for 4 qudits
 def best_ring_kernel(op_set, freqs) -> Sequence[tuple[int]]:
@@ -310,7 +320,107 @@ def best_star_kernel(vertex_uses) -> Sequence[tuple[int]]:
 	return [(q[1],q[0]), (q[2],q[0]), (q[3],q[0])]
 
 
-def select_kernel(
+def select_linear_kernel(
+	circuit_file : str, 
+	qudit_group : Sequence[int],
+	options : dict[str],
+) -> Graph | None:
+	# Convert the physical topology to a networkx graph
+	circuit = load_block_circuit(circuit_file, options)
+	logical_ops = get_logical_operations(circuit)
+	op_set = set(logical_ops)
+	freqs = get_frequencies(circuit)
+	return best_line_kernel(op_set, freqs)
+
+
+def select_falcon_kernel(
+	circuit_file : str, 
+	qudit_group : Sequence[int],
+	options : dict[str],
+) -> Graph | None:
+	"""
+	Given a qasm file and a physical topology, produce a hybrid topology where
+	logical edges are added for unperformable gates.
+
+	Args:
+		circuit_file (str): Path to the file specifying the circuit block.
+
+		qudit_group (Sequence[int]): Only qudit_group members will be used as
+			end points of logical edges.
+
+		options (dict[str]): 
+			blocksize (int): Defines the size of qudit groups
+			is_qasm (bool): Whether the circuit_file is qasm or pickle.
+			kernel_dir (str): Directory in which the kernel files are stored.
+
+	Returns:
+		kernel_edge_set (set[tuple[int]]): Edges to be used for synthesis.
+	
+	Raises:
+		ValueError: If `blocksize` key is not in `options`.
+	"""
+	if "blocksize" not in options:
+		raise ValueError("The `blocksize` entry in	`options` is required.")
+	elif options["blocksize"] > 4:
+		raise RuntimeError(
+			"Only blocksizes up to 4 are currently supported."
+		)
+
+	# Convert the physical topology to a networkx graph
+	circuit = load_block_circuit(circuit_file, options)
+	logical_ops = get_logical_operations(circuit)
+	op_set = set(logical_ops)
+	freqs = get_frequencies(circuit)
+
+	vertex_uses = get_num_vertex_uses(logical_ops, len(qudit_group))
+	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
+
+	# Handle the case where there are no multi-qubit gates
+	if len(op_set) == 0:
+		return []
+	# TODO: Generalize kernel selection for blocksizes > 4
+	# Return linear 3 graph, with most used qudit in center
+	if len(qudit_group) == 2 or len(qudit_group) == 3:
+		return list(op_set)
+	elif len(qudit_group) == 4:
+		number_edges = len(op_set)
+		# If there are 2 edges and 4 active qudits, then they are disjoint,
+		# just return the edges that are already used. This should not happen
+		# with the greedy partitioner.
+		if number_edges == 2:
+			return list(op_set)
+		# If there are 3 edges an 4 active qudits, we can have a star or a line.
+		# If a vertex has degree 3, we have a star, else we have a line.
+		elif number_edges == 3:
+			if max(vertex_degrees.keys(), key=lambda x: vertex_degrees[x]) == 3:
+				return best_star_kernel(vertex_uses)
+			# Order the edges so that the most frequent ones are first, this should
+			# be achieved by keeping the original ordering of the logical ops
+			else:
+				return list(op_set)
+		# If there are 4 edges, we can have a ring or a dipper. Based off tests run,
+		# we should just return a ring in this scenario. Because this uses the 
+		# falcon topology, we instead have to return a line or star. Tests show 
+		# that lines tend to be better.
+		elif number_edges == 4:
+			return best_line_kernel(op_set, freqs)
+
+		# If there are 5 edges, We have a ring with a bridge. Tests show that if 
+		# there is a vertex that is used more than the others (by about 3), then
+		# we should select a star. Otherwise select a ring. Add edges based on
+		# their frequencies.
+		elif number_edges == 5:
+			v_uses_list = sorted(vertex_uses.values(), reverse=True)
+			if v_uses_list[0] - 3 >= v_uses_list[1]:
+				return best_star_kernel(vertex_uses)
+			else:
+				return best_line_kernel(op_set, freqs)
+		# We have K_4
+		# Return a ring
+		else:
+			return best_line_kernel(op_set, freqs)
+
+def select_mesh_kernel(
 	circuit_file : str, 
 	qudit_group : Sequence[int],
 	options : dict[str],
@@ -483,3 +593,15 @@ def run_stats(
 	else:
 		string += get_original_count(options)
 	return string
+
+def select_kernel(
+	circuit_file : str, 
+	qudit_group : Sequence[int],
+	options : dict[str],
+) -> Graph | None:
+	if options["coupling_map"] == "mesh":
+		return select_mesh_kernel(circuit_file, qudit_group, options)
+	elif options["coupling_map"] == "falcon":
+		return select_falcon_kernel(circuit_file, qudit_group, options)
+	else:
+		return select_linear_kernel(circuit_file, qudit_group, options)

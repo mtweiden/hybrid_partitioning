@@ -1,7 +1,7 @@
 from os import listdir
 import pickle
 
-dir = "subtopology_files/add_9_mesh_9_blocksize_4_greedy_kernel"
+dir = "subtopology_files/qft_5_falcon_16_blocksize_4_quick_kernel"
 kernels = listdir(dir)
 kernels.remove("summary.txt")
 

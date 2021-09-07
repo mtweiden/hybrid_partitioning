@@ -52,7 +52,7 @@ if __name__ == '__main__':
 		"--partition_only", action="store_true",
 		help="skip synthesis and routing"
 	)
-	parser.add_argument("--coupling_map", dest="map_type", action="store",
+	parser.add_argument("--topology", dest="map_type", action="store",
 		default="mesh", type=str,
 		help="[mesh | linear | falcon]"
 	)
