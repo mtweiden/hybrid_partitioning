@@ -64,11 +64,11 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
 
 	# Set up Passes
-	seed = 42
+	#seed = 42
 	router = SabreSwap(
 		coupling_map=CouplingMap(list(coupling_graph)),
 		heuristic='lookahead',
-		seed=seed
+		#seed=seed
 	)
 	pass_man = PassManager([router])
 
