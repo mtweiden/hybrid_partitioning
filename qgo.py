@@ -47,6 +47,8 @@ if __name__ == '__main__':
 		help="skip synthesis and routing")
 	parser.add_argument("--use_pickle", action="store_true",
 		help="store intermediate files as pickle instead of qasm")
+	parser.add_argument("--topology", dest="coup_map", action="store",
+		nargs="?", default="mesh", type=str)
 	args = parser.parse_args()
 	#endregion
 
