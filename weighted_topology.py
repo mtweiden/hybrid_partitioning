@@ -290,7 +290,7 @@ def best_line_kernel(op_set, freqs) -> Sequence[tuple[int]]:
 			used_qudits.add(edges[i][1])
 		for i in range(2,len(edges)):
 			if edges[i][0] in used_qudits and edges[i][1] in used_qudits:
-				if len(kernel_edges) == 2:
+				if len(kernel_edges) == 2 and len(used_qudits) == 4:
 					kernel_edges.append(edges[i])
 					break
 			else:
