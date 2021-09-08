@@ -92,14 +92,18 @@ def get_coupling_map(
 		num_q = find_num_qudits(qasm_file)
 		if num_q <= 16:
 			coupling_map = "coupling_maps/falcon_16"
+			num_p = 16
 		elif num_q <= 27:
 			coupling_map = "coupling_maps/falcon_27"
+			num_p = 27
 		elif num_q <= 65:
 			coupling_map = "coupling_maps/falcon_27"
+			num_p = 65
 		else:
 			print("ERROR, NO FALCON BIG ENOUGH")
 			coupling_map = ""
-		return coupling_map
+			num_p = 0
+		return coupling_map, num_p
 	else:
 		print(f"{map_type} is not an implemented map type.")
 		coupling_map = ""
