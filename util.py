@@ -112,7 +112,7 @@ def setup_options(
 	qgo : bool = False,
 ) -> dict[str,Any]:
 
-	coupling_map, num_p = get_coupling_map(qasm_file)
+	coupling_map, num_p = get_coupling_map(qasm_file, args.coup_map)
 
 	options = {
 		"blocksize"	 : args.blocksize,

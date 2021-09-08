@@ -9,12 +9,11 @@ from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
+from bqskit.compiler.passes.partitioning.quick import QuickPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 from networkx.classes.graph import Graph
 
 from mapping import do_layout, do_routing
-from mapping import dummy_layout, dummy_routing
-from weighted_topology import get_hybrid_topology, get_logical_operations
 from util import (
 	load_circuit_structure,
 	run_stats, 
@@ -29,7 +28,6 @@ import logging
 logging.getLogger('bqskit').setLevel(logging.INFO)
 
 
-
 if __name__ == '__main__':
 	# Run setup
 	#region setup
@@ -41,7 +39,7 @@ if __name__ == '__main__':
 	parser.add_argument("--blocksize", dest="blocksize", action="store",
 		nargs='?', default=3, type=int, help="synthesis block size")
 	parser.add_argument("--partitioner", dest="partitioner", 
-		action="store", nargs="?", default="scan", type=str, 
+		action="store", nargs="?", default="quick", type=str, 
 		help="partitioner to use")
 	parser.add_argument("--partition_only", action="store_true",
 		help="skip synthesis and routing")
@@ -114,7 +112,8 @@ if __name__ == '__main__':
 			options["num_p"], 
 			machine_edges
 		)
-		partitioner = ScanPartitioner(args.blocksize)
+		#partitioner = ScanPartitioner(args.blocksize)
+		partitioner = QuickPartitioner(args.blocksize)
 		data = {
 			"machine_model": logical_machine,
 			"keep_idle_qudits": True
