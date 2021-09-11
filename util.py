@@ -105,11 +105,13 @@ def setup_options(
 		elif num_q <= 65:
 			coupling_map = f"falcon_65"
 			num_p = 65
+		elif num_q <= 113:
+			coupling_map = f"falcon_113"
+			num_p = 113
 		else:
 			raise RuntimeError(
 				f"{num_q} qubits is too large for the falcon map type."
 			)
-
 
 	# Select partitioner
 	valid_partitioners = ["scan", "greedy", "quick", "custom"]

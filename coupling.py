@@ -154,6 +154,7 @@ if __name__ == "__main__":
     get_coupling_map("linear", 41, True)
     get_coupling_map("linear", 50, True)
     get_coupling_map("linear", 64, True)
+    get_coupling_map("linear", 100, True)
     get_coupling_map("linear", 128, True)
 
     # Falcons
