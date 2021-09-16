@@ -126,6 +126,7 @@ def setup_options(
 		"coupling_map"   : f"coupling_maps/{coupling_map}",
 		"num_p" : num_p,
 		"partitioner" : partitioner,
+		"decomposer" : args.decomposer,
 		"checkpoint_as_qasm" : True,
 		"direct_ops" : 0,
 		"indirect_ops" : 0,

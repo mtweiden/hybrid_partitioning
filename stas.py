@@ -21,7 +21,7 @@ from util import (
 	setup_options,
 	get_summary,
 )
-from old_codebase import synthesize
+from bqskit_synth import synthesize
 
 # Enable logging
 import logging
@@ -55,6 +55,9 @@ if __name__ == '__main__':
 	parser.add_argument("--topology", dest="map_type", action="store",
 		default="mesh", type=str,
 		help="[mesh | linear | falcon]"
+	)
+	parser.add_argument("--decomposer", dest="decomposer", action="store",
+		default="qpredict", type=str, help="[qpredict | qfast]"
 	)
 	args = parser.parse_args()
 	#endregion

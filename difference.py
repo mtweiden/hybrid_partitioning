@@ -4,11 +4,11 @@ from bqskit import Circuit
 import pickle
 
 #filename = "qft_5"
-filename = "add_9"
-coupling = "mesh_3_3"
+filename = "add_5"
+coupling = "linear_5"
 blocksize = "blocksize_3"
 #blocksize = "blocksize_4"
-suffix = "greedy_kernel"
+suffix = "quick_kernel"
 #suffix = "shortest-path"
 num_q = 9
 #name = f"{filename}_{coupling}_{blocksize}"
@@ -32,7 +32,7 @@ print("Distance b/w layout and synth: ", layout_unitary.get_distance_from(synth_
 print("Distance b/w layout and mapp: ", layout_unitary.get_distance_from(mapp_unitary))
 print("Distance b/w mapp and synth: ", synth_unitary.get_distance_from(mapp_unitary))
 
-structure_path = f"block_files/{name}_greedy/structure.pickle"
+structure_path = f"block_files/{name}_{suffix}/structure.pickle"
 with open(structure_path, "rb") as f:
     structure = pickle.load(f)
 print(structure)
