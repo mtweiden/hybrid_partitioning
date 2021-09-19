@@ -86,7 +86,7 @@ def get_coupling_map(
 	if map_type == "mesh":
 		num_q = find_num_qudits(qasm_file)
 		num_p_sqrt = ceil(sqrt(num_q))
-		coupling_map = "coupling_maps/mesh_%d_%d" %(num_p_sqrt, num_p_sqrt)
+		coupling_map = f"coupling_maps/mesh_{num_p_sqrt*num_p_sqrt}"
 		return coupling_map, num_p_sqrt ** 2
 	elif map_type == "falcon":
 		num_q = find_num_qudits(qasm_file)
@@ -97,13 +97,20 @@ def get_coupling_map(
 			coupling_map = "coupling_maps/falcon_27"
 			num_p = 27
 		elif num_q <= 65:
-			coupling_map = "coupling_maps/falcon_27"
+			coupling_map = "coupling_maps/falcon_65"
 			num_p = 65
+		elif num_q <= 113:
+			coupling_map = "coupling_maps/falcon_113"
+			num_p = 113
 		else:
 			print("ERROR, NO FALCON BIG ENOUGH")
 			coupling_map = ""
 			num_p = 0
 		return coupling_map, num_p
+	elif map_type == "linear":
+		num_q = find_num_qudits(qasm_file)
+		coupling_map = f"coupling_maps/linear_{num_q}"
+		return coupling_map, num_q
 	else:
 		print(f"{map_type} is not an implemented map type.")
 		coupling_map = ""

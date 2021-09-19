@@ -1,4 +1,7 @@
 # Qiskit dependencies
+from __future__ import annotations
+from typing import Any
+
 from qiskit import QuantumCircuit
 from qiskit.transpiler import CouplingMap
 from qiskit.transpiler.passes import SabreLayout, SabreSwap
@@ -62,13 +65,12 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	# Gather circuit data
 	circ = QuantumCircuit.from_qasm_file(input_qasm_file)
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
-
 	# Set up Passes
-	#seed = 42
+	seed = 42
 	router = SabreSwap(
 		coupling_map=CouplingMap(list(coupling_graph)),
 		heuristic='lookahead',
-		#seed=seed
+		seed=seed
 	)
 	pass_man = PassManager([router])
 
@@ -78,6 +80,7 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
+
 
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 	# Make sure to expand the circuit to the number of physical qubits
@@ -101,18 +104,29 @@ def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 			out_qasm.write(in_qasm.read())
 
 
+def dummy_synthesis(
+	block_name : str,
+	options : dict[str, Any],
+) -> None:
+	synth_dir = f"{options['synthesis_dir']}/{block_name}"
+	block_path = f"{options['partition_dir']}/{block_name}"
+
+	with open(f"{block_path}.qasm", "r") as f:
+		block_qasm = f.read()
+
+	with open(f"{synth_dir}.qasm", "w") as f:
+		f.write(block_qasm)
+
+
 def format(input_line, layout_map) -> str:
     """
     Returns new qasm line with physical qubit numbering.
-
     Args:
         input_line (str): Original qasm string.
-
         layout_map (dict): Logical to physical mapping.
     
     Returns:
         qasm_str (str): Newly mapped qasm string.
-
     Note:
         Assumes there is a single register named 'q', replaces that name with 
         'physical'.

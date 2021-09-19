@@ -14,13 +14,10 @@ def mesh(
 ) -> set[tuple[int]]:
     """
     Generate a 2D mesh coupling map.
-
     Args:
         n (int): If only n is provided, then this is the side length of a square
             grid. Otherwise it is the number of rows in the mesh.
-
         m (int|None): If m is provided, it is the number of columns in the mesh.
-
     Returns:
         coupling_map (set[tuple[int]]): The coupling map corresponding to the 
             2D nearest neighbor mesh that is nxn or nxm in dimensions.
@@ -42,10 +39,8 @@ def mesh(
 def alltoall(num_q :int ) -> set[tuple[int]]:
     """
     Generate an all to all coupling map.
-
     Args:
         num_q (int): Number of vertices in the graph.
-
     Returns:
         coupling_map (set[tuple[int]]): All to all couplings.
     """
@@ -59,10 +54,8 @@ def alltoall(num_q :int ) -> set[tuple[int]]:
 def linear(num_q : int) -> set[tuple[int]]:
     """
     Generate a linear coupling map.
-
     Args:
         num_q (int): Number of vertices in the graph.
-
     Returns:
         coupling_map (set[tuple[int]]): Linear couplings
     """
@@ -75,14 +68,13 @@ def make_coupling_map(
 ) -> Sequence[Sequence[int]] | None:
     if coupling_type == "linear":
         coup_map = linear(num_q = num_q)
-        output_name = "%s_%d" %(coupling_type, num_q)
+        output_name = f"{coupling_type}_{num_q}"
     elif coupling_type == "mesh":
         n = ceil(sqrt(num_q))
         coup_map = mesh(n = n)
-        output_name = "%s_%d_%d" %(coupling_type, n, n)
+        output_name = f"{coupling_type}_{n**2}"
     elif coupling_type == "all" or coupling_type == "alltoall":
         coup_map = alltoall(num_q = num_q)
-        output_name = "%s_%d" %(coupling_type, num_q)
     else:
         # If there's no such coupling map type, use all to all
         print("No such coupling map type (%s), using all-to-all" 
@@ -105,13 +97,15 @@ def get_coupling_map(
     if exists(coupling_type_or_file):
         with open(coupling_type_or_file, 'rb') as f:
             coup_map = load(f)
-        num_p = max(max(coup_map)) + 1
+        qudits = [x[0] for x in coup_map]
+        qudits.extend([x[1] for x in coup_map])
+        num_p = max(qudits) + 1
         file_name = coupling_type_or_file
     else:
         if coupling_type_or_file == "mesh":
             n = ceil(sqrt(num_q))
             num_p = n ** 2
-            file_name = "%s_%d_%d" %(coupling_type_or_file, n, n)
+            file_name = "%s_%d" %(coupling_type_or_file, num_p)
         else:
             num_p = num_q
             file_name = "%s_%d" %(coupling_type_or_file, num_q)
@@ -128,13 +122,93 @@ def get_coupling_map(
     
     return (num_p, coup_map)
 
-if __name__ == "__main__":
-	get_coupling_map("mesh", 2, True)
-	get_coupling_map("mesh", 4, True)
-	get_coupling_map("mesh", 8, True)
-	get_coupling_map("mesh", 16, True)
-	get_coupling_map("mesh", 32, True)
-	get_coupling_map("mesh", 64, True)
-	get_coupling_map("mesh", 128, True)
-	get_coupling_map("alltoall", 5, True)
 
+if __name__ == "__main__":
+    get_coupling_map("mesh", 4, True)
+    get_coupling_map("mesh", 9, True)
+    get_coupling_map("mesh", 16, True)
+    get_coupling_map("mesh", 25, True)
+    get_coupling_map("mesh", 36, True)
+    get_coupling_map("mesh", 49, True)
+    get_coupling_map("mesh", 64, True)
+    get_coupling_map("mesh", 81, True)
+    get_coupling_map("mesh", 100, True)
+    get_coupling_map("mesh", 121, True)
+    get_coupling_map("mesh", 128, True)
+
+    get_coupling_map("linear", 5, True)
+    get_coupling_map("linear", 9, True)
+    get_coupling_map("linear", 10, True)
+    get_coupling_map("linear", 15, True)
+    get_coupling_map("linear", 16, True)
+    get_coupling_map("linear", 17, True)
+    get_coupling_map("linear", 20, True)
+    get_coupling_map("linear", 25, True)
+    get_coupling_map("linear", 30, True)
+    get_coupling_map("linear", 32, True)
+    get_coupling_map("linear", 40, True)
+    get_coupling_map("linear", 41, True)
+    get_coupling_map("linear", 50, True)
+    get_coupling_map("linear", 64, True)
+    get_coupling_map("linear", 65, True)
+    get_coupling_map("linear", 101, True)
+    get_coupling_map("linear", 128, True)
+
+    # Falcons
+    # 16
+    falcon16 = set([
+        (6,7),
+        (0,1), (1,4), (4,7), (7,10), (10,12), (12,15),
+        (1,2), (12,13),
+        (2,3), (13,14),
+        (3,5), (5,8), (8,11), (11,14),
+        (8,9),
+    ])
+    with open("coupling_maps/falcon_16", "wb") as f:
+        dump(falcon16, f)
+
+    # 27
+    falcon27 = set([
+        (6,7), (17,18),
+        (0,1), (1,4), (4,7), (7,10), (10,12), (12,15), (15,18), (18,21), (21,23),
+        (1,2), (12,13), (23,24),
+        (2,3), (13,14), (24,25),
+        (3,5), (5,8), (8,11), (11,14), (14,16), (16,19), (19,22), (22,25), (25,26),
+        (8,9), (19,20),
+    ])
+    with open("coupling_maps/falcon_27", "wb") as f:
+        dump(falcon27, f)
+
+    # 65
+    falcon65 = set([
+        (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7), (7,8), (8,9),
+        (0,10), (4,11), (8,12),
+        (10,13), (11,17), (12,21),
+        (13,14), (14,15), (15,16), (16,17), (17,18), (18,19), (19,20), (20,21), (21,22), (22,23),
+        (15,24), (19,25), (23,26),
+        (24,29), (25,33), (26,37),
+        (27,28), (28,29), (29,30), (30,31), (31,32), (32,33), (33,34), (34,35), (35,36), (36,37),
+        (27,38), (31,39), (35,40),
+        (38,41), (39,43), (40,49),
+        (41,42), (42,43), (43,44), (44,45), (45,46), (46,47), (47,48), (48,49), (49,50), (50,51),
+        (43,52), (47,53), (51,54),
+        (52,56), (53,60), (54,64),
+        (55,56), (56,57), (57,58), (58,59), (59,60), (60,61), (61,62), (62,63), (63,64),
+    ])
+    with open("coupling_maps/falcon_65", "wb") as f:
+        dump(falcon65, f)
+
+    # 113
+    falcon113 = set([
+        (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7), (7,8), (8,9), (9,10), (10,11), (11,12), (12,13), (13,14), (14,15), (15,16), (16,17),
+        (0,18), (18,23), (4,19), (19,27), (8,20), (20,31), (12,21), (21,35), (16,22), (22,39),
+        (23,24), (24,25), (25,26), (26,27), (27,28), (28,29), (29,30), (30,31), (31,32), (32,33), (33,34), (34,35), (35,36), (36,37), (37,38), (38,39), (39,40), (40,41),
+        (25,42), (42,49), (29,43), (43,53), (33,44), (44,57), (37,45), (45,61), (41,46), (46,65),
+        (47,48), (48,49), (49,50), (50,51), (51,52), (52,53), (53,54), (54,55), (55,56), (56,57), (57,58), (58,59), (59,60), (60,61), (61,62), (62,63), (63,64), (64,65),
+        (47,66), (66,71), (51,67), (67,75), (55,68), (68,79), (59,69), (69,83), (63,70), (70,87),
+        (71,72), (72,73), (73,74), (74,75), (75,76), (76,77), (77,78), (78,79), (79,80), (80,81), (81,82), (82,83), (83,84), (84,85), (85,86), (86,87), (87,88), (88,89),
+        (73,90), (90,96), (77,91), (91,100), (81,92), (92,104), (85,93), (93,108), (89,94), (94,112),
+        (95,96), (96,97), (97,98), (98,99), (99,100), (100,101), (101,102), (102,103), (103,104), (104,105), (105,106), (106,107), (107,108), (108,109), (109,110), (110,111), (111,112),
+    ])
+    with open("coupling_maps/falcon_113", "wb") as f:
+        dump(falcon113, f)
