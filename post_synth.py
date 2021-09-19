@@ -100,6 +100,96 @@ def replace_blocks(
 	physical_graph = nx.Graph()
 	physical_graph.add_edges_from(edge_set)
 	
+	# Make a directory for the non-synthesized blocks
+	if not exists(options["nosynth_dir"]):
+		mkdir(options["nosynth_dir"])
+	# Make a directory for the replaced/resynthesis blocks
+	if not exists(options["resynthesis_dir"]):
+		mkdir(options["resynthesis_dir"])
+
+	# Route each block
+	reroute_flag = False
+	for block_num in range(len(blocks)):
+		input_qasm_file = options["partition_dir"] + "/" + blocks[block_num]
+		output_qasm_file = options["nosynth_dir"] + "/" + blocks[block_num]
+		topology = options["subtopology_dir"] + "/" + topologies[block_num]
+		if not exists(output_qasm_file):
+			reroute_flag = True
+			print(f"Routing block {block_num}/{len(blocks)}")
+			do_routing(input_qasm_file, topology, output_qasm_file)
+
+		# Determine whether each file would have been shorter had it been routed
+		# Count cnots in synthesized
+		synthesized_qasm_file = options["synthesis_dir"] + "/" + blocks[block_num]
+		with open(synthesized_qasm_file, "r") as f:
+			synthesized_qasm = f.read()
+			cnots = re.findall("cx ", synthesized_qasm)
+		synthesized_count = len(cnots)
+		# Count cnots & swaps in routed
+		with open(output_qasm_file, "r") as f:
+			routed_qasm = f.read()
+			cnots = re.findall("cx ", routed_qasm)
+			swaps = re.findall("swap ", routed_qasm)
+		routed_count = len(cnots) + 3 * len(swaps)
+
+		# Put the smaller block in the resynth directory
+		repalced_qasm = options["resynthesis_dir"] + "/" + blocks[block_num]
+		if not exists(repalced_qasm):
+			with open(repalced_qasm, "w") as f:
+				if synthesized_count <= routed_count:
+					f.write(synthesized_qasm)
+				else:
+					print(
+						f"  Using routed version of block {block_num} "
+						f"({routed_count/synthesized_count}x smaller)"
+					)
+					f.write(routed_qasm)
+	
+	if reroute_flag:
+		# Recreate new synthesized qasm file
+		new_circ = Circuit(options['num_p'])
+		for block_num in range(len(structure)):
+			with open(
+				f"{options['resynthesis_dir']}/{blocks[block_num]}", "r"
+			) as f:
+				subcircuit_qasm = f.read()
+			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+			group_len = subcircuit.size
+			qudit_group = [structure[block_num][x] for x in range(group_len)]
+			new_circ.append_circuit(subcircuit, qudit_group)
+		
+		with open(options["resynthesized_qasm_file"], "w") as f:
+			f.write(OPENQASM2Language().encode(new_circ))
+
+		# Route the entire circuit again
+		print("="*80)
+		print("Rerouting new circuit...")
+		print("="*80)
+		do_routing(
+			options["resynthesized_qasm_file"],
+			options["coupling_map"],
+			options["remapped_qasm_file"]
+		)
+
+
+def old_replace_blocks(
+	options: dict[str, Any],
+):
+	topologies = sorted(listdir(options["subtopology_dir"]))
+	topologies.remove("summary.txt")
+	blocks = sorted(listdir(options["partition_dir"]))
+	blocks.remove("structure.pickle")
+	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+		structure = pickle.load(f)
+	synthblocks = sorted(listdir(options["synthesis_dir"]))
+	for sb in synthblocks:
+		if ".qasm" not in sb:
+			synthblocks.remove(sb)
+	with open(options["coupling_map"], "rb") as f:
+		edge_set = pickle.load(f)
+	physical_graph = nx.Graph()
+	physical_graph.add_edges_from(edge_set)
+	
 	# Create nosynth mapped file
 	mapped_nosynth_path = options["mapped_qasm_file"] + "_nosynth"
 	if not exists(mapped_nosynth_path):

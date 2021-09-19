@@ -95,7 +95,6 @@ def setup_options(
 		)
 		num_p = num_q
 	else: #elif args.map_type == "falcon"
-		#sizes = [16, 27, 65]
 		if num_q <= 16:
 			coupling_map = f"falcon_16"
 			num_p = 16
@@ -161,6 +160,7 @@ def setup_options(
 	options["remapped_qasm_file"] = "mapped_qasm/" + target_name + "_remapped"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
 	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
+	options["nosynth_dir"] = options["synthesis_dir"] + "_nosynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 	options["kernel_dir"] = f"kernels/{coupling_map}_blocksize_{args.blocksize}"
 
