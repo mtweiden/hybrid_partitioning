@@ -57,7 +57,7 @@ if __name__ == '__main__':
 		help="[mesh | linear | falcon]"
 	)
 	parser.add_argument("--decomposer", dest="decomposer", action="store",
-		default="qfast", type=str, help="[qpredict | qfast]"
+		default="qfast", type=str, help="[qpredict | qfast | none]"
 	)
 	args = parser.parse_args()
 	#endregion

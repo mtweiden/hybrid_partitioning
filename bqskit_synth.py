@@ -72,7 +72,7 @@ def synthesize(
 		print("Using edges: ", subtopology)
 		if options["decomposer"] == "qpredict":
 			QPredictDecompositionPass().run(subcircuit, data)
-		else:
+		elif options["decomposer"] == "qfast":
 			QFASTDecompositionPass().run(subcircuit, data)
 		QSearchSynthesisPass().run(subcircuit, data)
 		VariableToU3Pass().run(subcircuit, {})
