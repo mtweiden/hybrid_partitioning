@@ -369,7 +369,7 @@ def select_linear_kernel(
 		# 3 edges cases:
 		#	K_3 (revert)
 		#		degrees - 2, 2, 2, 0, 0
-		#	4-star (revert)
+		#	4-star (pick new edge)
 		#		degrees - 3, 1, 1, 1, 0
 		#	4-line
 		#		degrees - 2, 2, 1, 1, 0
@@ -383,7 +383,18 @@ def select_linear_kernel(
 			) or options["blocksize"] > 3 and (
 				d[0] == 3 and d[1] == 1 and d[2] == 1 and d[3] == 1
 			):
-				edges.pop(-1)
+				removed_edge = edges.pop(-1)
+				# If no more edges to choose from, connect the node to one of
+				# the end nodes
+				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 3 \
+					else removed_edge[1]
+				new_node = removed_edge[0] if center != removed_edge[0] \
+					else removed_edge[1]
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1 and i != new_node:
+						break
+				new_edge = (min(new_node, i), max(new_node, i))
+				edges.append(new_edge)
 			continue
 		# 4 edges cases:
 		#	4-dipper (revert)
@@ -392,7 +403,7 @@ def select_linear_kernel(
 		#		degrees - 2, 2, 2, 2, 0
 		#	disconnected K_2 and K_3 (revert)
 		#		degrees - 2, 2, 2, 1, 1
-		#	5-tee (revert)
+		#	5-tee (pick new edge)
 		#		degrees - 3, 2, 1, 1, 1
 		#	5-line
 		#		degrees - 2, 2, 2, 1, 1
@@ -408,7 +419,26 @@ def select_linear_kernel(
 			elif options["blocksize"] > 4 and (
 				d[0] == 3 and d[1] == 2 and d[2] == 1 and d[3] == 1 and d[4] == 1
 			):
-				edges.pop(-1)
+				removed_edge = edges.pop(-1)
+				# If no more edges to choose from, connect the node to an end node
+				# preferably the one closest to the center node
+				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 3 \
+					else removed_edge[1]
+				new_node = removed_edge[0] if center != removed_edge[0] \
+					else removed_edge[1]
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1 and i != new_node:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[j] == 1 and j != new_node and j != i:
+						break
+				# Find the end node closest to the center node
+				if (i, center) or (center, i) in edges:
+					new_edge = (min(new_node, i), max(new_node, i))
+				else:
+					new_edge = (min(new_node, j), max(new_node, j))
+				edges.append(new_edge)
+
 			elif options["blocksize"] > 4 and (
 				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
 			):
@@ -509,7 +539,7 @@ def select_falcon_kernel(
 		#		degrees - 2, 2, 2, 2, 0
 		#	disconnected K_2 and K_3 (revert)
 		#		degrees - 2, 2, 2, 1, 1
-		#	5-star (revert)
+		#	5-star (pick new edge)
 		#		degrees - 4, 1, 1, 1, 1
 		#	5-tee
 		#		degrees - 3, 2, 1, 1, 1
@@ -525,7 +555,40 @@ def select_falcon_kernel(
 			elif options["blocksize"] > 4 and(
 				d[0] == 4 and d[1] == 1 and d[2] == 1 and d[3] == 1 and d[4] == 1
 			):
-				edges.pop(-1)
+				removed_edge = edges.pop(-1)
+				# If no more edges to choose from, connect the node to an end node
+				# preferably the one closest to the center node
+				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 4 \
+					else removed_edge[1]
+				new_node = removed_edge[0] if center != removed_edge[0] \
+					else removed_edge[1]
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1 and i != new_node:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[j] == 1 and j != new_node and j != i:
+						break
+				for k in vertex_degrees.keys():
+					if vertex_degrees[k] == 1 and k != new_node and k != i and k!= j:
+						break
+				new_edge_i = (min(i, new_node), max(i, new_node))
+				new_edge_j = (min(j, new_node), max(j, new_node))
+				new_edge_k = (min(k, new_node), max(k, new_node))
+				if new_edge_i in ranked_ops:
+					edges.append(new_edge_i)
+				elif new_edge_j in ranked_ops:
+					edges.append(new_edge_j)
+				elif new_edge_k in ranked_ops:
+					edges.append(new_edge_k)
+				else:
+					edges.append(new_edge_i)
+				
+				# Find the end node closest to the center node
+				if (i, center) or (center, i) in edges:
+					new_edge = (min(new_node, i), max(new_node, i))
+				else:
+					new_edge = (min(new_node, j), max(new_node, j))
+				edges.append(new_edge)
 			elif options["blocksize"] > 4 and (
 				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
 			):

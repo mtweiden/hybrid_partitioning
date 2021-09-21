@@ -38,7 +38,7 @@ if __name__ == '__main__':
 	)
 	parser.add_argument("qasm_file", type=str, help="file to synthesize")
 	parser.add_argument(
-		"--blocksize", dest="blocksize", action="store", nargs='?', default=3,
+		"--blocksize", dest="blocksize", action="store", nargs='?', default=4,
 		type=int, help="synthesis block size"
 	)
 	parser.add_argument(
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 		help="skip synthesis and routing"
 	)
 	parser.add_argument("--topology", dest="map_type", action="store",
-		default="mesh", type=str,
+		default="linear", type=str,
 		help="[mesh | linear | falcon]"
 	)
 	parser.add_argument("--decomposer", dest="decomposer", action="store",

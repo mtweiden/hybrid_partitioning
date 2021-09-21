@@ -74,8 +74,10 @@ def synthesize(
 		print("Using edges: ", subtopology)
 		if options["decomposer"] == "qpredict":
 			QPredictDecompositionPass().run(subcircuit, data)
+			#QPredictDecompositionPass().run(subcircuit, {})
 		elif options["decomposer"] == "qfast":
 			QFASTDecompositionPass().run(subcircuit, data)
+			#QFASTDecompositionPass().run(subcircuit, {})
 		#QSearchSynthesisPass().run(subcircuit, data)
 		#VariableToU3Pass().run(subcircuit, {})
 		#subcircuit_qasm = OPENQASM2Language().encode(subcircuit)
