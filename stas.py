@@ -28,7 +28,6 @@ import logging
 logging.getLogger('bqskit').setLevel(logging.INFO)
 
 
-
 if __name__ == '__main__':
 	# Run setup
 	#region setup
@@ -56,6 +55,8 @@ if __name__ == '__main__':
 		default="mesh", type=str,
 		help="[mesh | linear | falcon]"
 	)
+	parser.add_argument("--alltoall",action="store_true",
+		help="synthesize to all to all")
 	args = parser.parse_args()
 	#endregion
 
@@ -154,12 +155,19 @@ if __name__ == '__main__':
 		for block_num in range(len(block_files)):
 			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
-
-			subtopology = select_kernel(
-				block_path,
-				structure[block_num],
-				options
-			)
+			
+			if args.alltoall:
+				subtopology = set([])
+				for i in range(args.blocksize):
+					for j in range(args.blocksize-1, i, -1):
+						subtopology.add((i,j))
+				print(subtopology)
+			else:
+				subtopology = select_kernel(
+					block_path,
+					structure[block_num],
+					options
+				)
 			subtopology_path = (
 				f"{options['subtopology_dir']}/{block_names[block_num]}"
 				f"_kernel.pickle"

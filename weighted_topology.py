@@ -552,40 +552,40 @@ def run_stats(
 	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
 		structure = pickle.load(f)
 
-	# Run collect_stats on each block
-	for block_num in range(len(block_files)):
-		# Get BQSKIT circuit
-		if not post_stats:
-			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		elif not resynthesized:
-			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		else:
-			with open(f"{options['resynthesis_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		
-		# Get physical graph
-		with open(options["coupling_map"], "rb") as graph:
-			physical = pickle.load(graph)
-		pgraph = Graph()
-		pgraph.add_edges_from(physical)
+	## Run collect_stats on each block
+	#for block_num in range(len(block_files)):
+	#	# Get BQSKIT circuit
+	#	if not post_stats:
+	#		with open(f"{options['partition_dir']}/{block_files[block_num]}", 
+	#			"r") as qasm:
+	#			circ = OPENQASM2Language().decode(qasm.read())
+	#	elif not resynthesized:
+	#		with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
+	#			"r") as qasm:
+	#			circ = OPENQASM2Language().decode(qasm.read())
+	#	else:
+	#		with open(f"{options['resynthesis_dir']}/{block_files[block_num]}", 
+	#			"r") as qasm:
+	#			circ = OPENQASM2Language().decode(qasm.read())
+	#	
+	#	# Get physical graph
+	#	with open(options["coupling_map"], "rb") as graph:
+	#		physical = pickle.load(graph)
+	#	pgraph = Graph()
+	#	pgraph.add_edges_from(physical)
 
-		# Get hybrid graph
-		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
-			"rb") as graph:
-			hybrid = pickle.load(graph)
-		
-		collect_stats(
-			circ,
-			pgraph,
-			hybrid,
-			structure[block_num],
-			options = options,
-		)
+	#	# Get hybrid graph
+	#	with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
+	#		"rb") as graph:
+	#		hybrid = pickle.load(graph)
+	#	
+	#	collect_stats(
+	#		circ,
+	#		pgraph,
+	#		hybrid,
+	#		structure[block_num],
+	#		options = options,
+	#	)
 	if resynthesized:
 		string = "REPLACE-\n"
 	elif post_stats:
