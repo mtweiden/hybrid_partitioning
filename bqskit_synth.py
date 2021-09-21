@@ -13,7 +13,9 @@ from re import search
 from numpy import ndarray
 
 from bqskit import CompilationTask
-from bqskit.compiler.passes.synthesis.qsearch import QSearchSynthesisPass
+#from bqskit.compiler.passes.synthesis.qsearch import QSearchSynthesisPass
+from bqskit.compiler.passes.synthesis.old_leap import OldLeap
+#from bqskit.compiler.passes.synthesis.old_leap import synthesize_unitary
 from bqskit.compiler.passes.synthesis.qfast import QFASTDecompositionPass
 from bqskit.compiler.passes.synthesis.qpredict import QPredictDecompositionPass
 from bqskit.compiler.passes.util.converttou3 import VariableToU3Pass
@@ -74,9 +76,15 @@ def synthesize(
 			QPredictDecompositionPass().run(subcircuit, data)
 		elif options["decomposer"] == "qfast":
 			QFASTDecompositionPass().run(subcircuit, data)
-		QSearchSynthesisPass().run(subcircuit, data)
+		#QSearchSynthesisPass().run(subcircuit, data)
+		#VariableToU3Pass().run(subcircuit, {})
+		#subcircuit_qasm = OPENQASM2Language().encode(subcircuit)
+
+		subcircuit_qasm = OldLeap().run(subcircuit, data)
 		VariableToU3Pass().run(subcircuit, {})
 		subcircuit_qasm = OPENQASM2Language().encode(subcircuit)
+
+		#subcircuit_qasm = synthesize_unitary(subcircuit.get_unitary(), data)
 		with open(f"{synth_dir}.qasm", "w") as f:
 			f.write(subcircuit_qasm)
 

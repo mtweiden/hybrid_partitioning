@@ -336,20 +336,105 @@ def select_linear_kernel(
 	circuit_file : str, 
 	qudit_group : Sequence[int],
 	options : dict[str],
-) -> Graph | None:
+) -> Sequence[tuple[int]]:
+	if "blocksize" not in options:
+		raise ValueError("The `blocksize` entry in	`options` is required.")
+	elif options["blocksize"] > 5:
+		raise RuntimeError(
+			"Only blocksizes up to 5 are currently supported."
+		)
+
 	# Convert the physical topology to a networkx graph
 	circuit = load_block_circuit(circuit_file, options)
 	logical_ops = get_logical_operations(circuit)
 	op_set = set(logical_ops)
 	freqs = get_frequencies(circuit)
-	return best_line_kernel(op_set, freqs)
+
+	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
+
+	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
+
+	edges = []
+	# TODO: Generalize kernel selection for blocksizes > 4
+	# Handle the case where there are no multi-qubit gates
+	while len(ranked_ops) > 0:
+		edges.append(ranked_ops.pop(0))	
+		# 1 edge cases:
+		#	K_2
+		# 2 edges cases:
+		#	2 disconnected K_2 graphs
+		#	3-line
+		if len(edges) <= 2:
+			continue
+		# 3 edges cases:
+		#	K_3 (revert)
+		#		degrees - 2, 2, 2, 0, 0
+		#	4-star (revert)
+		#		degrees - 3, 1, 1, 1, 0
+		#	4-line
+		#		degrees - 2, 2, 1, 1, 0
+		#	Disconnected K_2 and 3-line
+		#		degrees - 2, 1, 1, 1, 1
+		elif len(edges) == 3:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if (
+				d[0] == 2 and d[1] == 2 and d[2] == 2
+			) or options["blocksize"] > 3 and (
+				d[0] == 3 and d[1] == 1 and d[2] == 1 and d[3] == 1
+			):
+				edges.pop(-1)
+			continue
+		# 4 edges cases:
+		#	4-dipper (revert)
+		#		degrees - 3, 2, 2, 1, 0
+		#	4-ring (revert)
+		#		degrees - 2, 2, 2, 2, 0
+		#	disconnected K_2 and K_3 (revert)
+		#		degrees - 2, 2, 2, 1, 1
+		#	5-tee (revert)
+		#		degrees - 3, 2, 1, 1, 1
+		#	5-line
+		#		degrees - 2, 2, 2, 1, 1
+		elif len(edges) == 4:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if options["blocksize"] < 5 and (
+				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
+			) or (
+				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 2
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and (
+				d[0] == 3 and d[1] == 2 and d[2] == 1 and d[3] == 1 and d[4] == 1
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and (
+				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			):
+				# If the degree 1 nodes are adjacent, revert
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[j] == 1 and i != j:
+						break
+				if (i,j) in edges or (j,i) in edges:
+					edges.pop(-1)
+			continue
+		# 5 edges cases:
+		# Only blocksize 5 is supported
+		elif len(edges) > 4:
+			edges.pop(-1)
+
+	return edges
 
 
 def select_falcon_kernel(
 	circuit_file : str, 
 	qudit_group : Sequence[int],
 	options : dict[str],
-) -> Graph | None:
+) -> Sequence[tuple[int]]:
 	"""
 	Given a qasm file and a physical topology, produce a hybrid topology where
 	logical edges are added for unperformable gates.
@@ -373,9 +458,9 @@ def select_falcon_kernel(
 	"""
 	if "blocksize" not in options:
 		raise ValueError("The `blocksize` entry in	`options` is required.")
-	elif options["blocksize"] > 4:
+	elif options["blocksize"] > 5:
 		raise RuntimeError(
-			"Only blocksizes up to 4 are currently supported."
+			"Only blocksizes up to 5 are currently supported."
 		)
 
 	# Convert the physical topology to a networkx graph
@@ -384,59 +469,89 @@ def select_falcon_kernel(
 	op_set = set(logical_ops)
 	freqs = get_frequencies(circuit)
 
-	vertex_uses = get_num_vertex_uses(logical_ops, len(qudit_group))
+	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
+
 	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
 
-	# Handle the case where there are no multi-qubit gates
-	if len(op_set) == 0:
-		return []
+	edges = []
 	# TODO: Generalize kernel selection for blocksizes > 4
-	# Return linear 3 graph, with most used qudit in center
-	if len(qudit_group) == 2 or len(qudit_group) == 3:
-		return list(op_set)
-	elif len(qudit_group) == 4:
-		number_edges = len(op_set)
-		# If there are 2 edges and 4 active qudits, then they are disjoint,
-		# just return the edges that are already used. This should not happen
-		# with the greedy partitioner.
-		if number_edges == 2:
-			return list(op_set)
-		# If there are 3 edges an 4 active qudits, we can have a star or a line.
-		# If a vertex has degree 3, we have a star, else we have a line.
-		elif number_edges == 3:
-			if max(vertex_degrees.keys(), key=lambda x: vertex_degrees[x]) == 3:
-				return best_star_kernel(vertex_uses)
-			# Order the edges so that the most frequent ones are first, this should
-			# be achieved by keeping the original ordering of the logical ops
-			else:
-				return list(op_set)
-		# If there are 4 edges, we can have a ring or a dipper. Based off tests run,
-		# we should just return a ring in this scenario. Because this uses the 
-		# falcon topology, we instead have to return a line or star. Tests show 
-		# that lines tend to be better.
-		elif number_edges == 4:
-			return best_line_kernel(op_set, freqs)
+	# Handle the case where there are no multi-qubit gates
+	while len(ranked_ops) > 0:
+		edges.append(ranked_ops.pop(0))	
+		# 1 edge cases:
+		#	K_2
+		# 2 edges cases:
+		#	2 disconnected K_2 graphs
+		#	3-line
+		if len(edges) <= 2:
+			continue
+		# 3 edges cases:
+		#	K_3 (revert)
+		#		degrees - 2, 2, 2, 0, 0
+		#	4-star
+		#		degrees - 3, 1, 1, 1, 0
+		#	4-line
+		#		degrees - 2, 2, 1, 1, 0
+		#	Disconnected K_2 and 3-line
+		#		degrees - 2, 1, 1, 1, 1
+		elif len(edges) == 3:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if (
+				d[0] == 2 and d[1] == 2 and d[2] == 2
+			):
+				edges.pop(-1)
+			continue
+		# 4 edges cases:
+		#	4-dipper (revert)
+		#		degrees - 3, 2, 2, 1, 0
+		#	4-ring (revert)
+		#		degrees - 2, 2, 2, 2, 0
+		#	disconnected K_2 and K_3 (revert)
+		#		degrees - 2, 2, 2, 1, 1
+		#	5-star (revert)
+		#		degrees - 4, 1, 1, 1, 1
+		#	5-tee
+		#		degrees - 3, 2, 1, 1, 1
+		#	5-line
+		#		degrees - 2, 2, 2, 1, 1
+		elif len(edges) == 4:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if (
+				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and(
+				d[0] == 4 and d[1] == 1 and d[2] == 1 and d[3] == 1 and d[4] == 1
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and (
+				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			):
+				# If the degree 1 nodes are adjacent, revert
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[j] == 1 and i != j:
+						break
+				if (i,j) in edges or (j,i) in edges:
+					edges.pop(-1)
+			continue
+		# 5 edges cases:
+		# Only blocksize 5 is supported
+		elif len(edges) > 4:
+			edges.pop(-1)
 
-		# If there are 5 edges, We have a ring with a bridge. Tests show that if 
-		# there is a vertex that is used more than the others (by about 3), then
-		# we should select a star. Otherwise select a ring. Add edges based on
-		# their frequencies.
-		elif number_edges == 5:
-			v_uses_list = sorted(vertex_uses.values(), reverse=True)
-			if v_uses_list[0] - 3 >= v_uses_list[1]:
-				return best_star_kernel(vertex_uses)
-			else:
-				return best_line_kernel(op_set, freqs)
-		# We have K_4
-		# Return a ring
-		else:
-			return best_line_kernel(op_set, freqs)
+	return edges
+
 
 def select_mesh_kernel(
 	circuit_file : str, 
 	qudit_group : Sequence[int],
 	options : dict[str],
-) -> Graph | None:
+) -> Sequence[tuple[int]]:
 	"""
 	Given a qasm file and a physical topology, produce a hybrid topology where
 	logical edges are added for unperformable gates.
@@ -460,9 +575,9 @@ def select_mesh_kernel(
 	"""
 	if "blocksize" not in options:
 		raise ValueError("The `blocksize` entry in	`options` is required.")
-	elif options["blocksize"] > 4:
+	elif options["blocksize"] > 5:
 		raise RuntimeError(
-			"Only blocksizes up to 4 are currently supported."
+			"Only blocksizes up to 5 are currently supported."
 		)
 
 	# Convert the physical topology to a networkx graph
@@ -471,51 +586,122 @@ def select_mesh_kernel(
 	op_set = set(logical_ops)
 	freqs = get_frequencies(circuit)
 
-	vertex_uses = get_num_vertex_uses(logical_ops, len(qudit_group))
+	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
+
 	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
 
-	# Handle the case where there are no multi-qubit gates
-	if len(op_set) == 0:
-		return []
+	edges = []
 	# TODO: Generalize kernel selection for blocksizes > 4
-	# Return linear 3 graph, with most used qudit in center
-	if len(qudit_group) == 2 or len(qudit_group) == 3:
-		return list(op_set)
-	elif len(qudit_group) == 4:
-		number_edges = len(op_set)
-		# If there are 2 edges and 4 active qudits, then they are disjoint,
-		# just return the edges that are already used. This should not happen
-		# with the greedy partitioner.
-		if number_edges == 2:
-			return list(op_set)
-		# If there are 3 edges an 4 active qudits, we can have a star or a line.
-		# If a vertex has degree 3, we have a star, else we have a line.
-		elif number_edges == 3:
-			if max(vertex_degrees.keys(), key=lambda x: vertex_degrees[x]) == 3:
-				return best_star_kernel(vertex_uses)
-			# Order the edges so that the most frequent ones are first, this should
-			# be achieved by keeping the original ordering of the logical ops
-			else:
-				return list(op_set)
-		# If there are 4 edges, we can have a ring or a dipper. Based off tests run,
-		# we should just return a ring in this scenario.
-		elif number_edges == 4:
-			return best_ring_kernel(op_set, freqs)
+	# Handle the case where there are no multi-qubit gates
+	while len(ranked_ops) > 0:
+		edges.append(ranked_ops.pop(0))	
+		# 1 edge cases:
+		#	K_2
+		# 2 edges cases:
+		#	2 disconnected K_2 graphs
+		#	3-line
+		if len(edges) <= 2:
+			continue
+		# 3 edges cases:
+		#	K_3 (revert)
+		#		degrees - 2, 2, 2, 0, 0
+		#	4-star
+		#		degrees - 3, 1, 1, 1, 0
+		#	4-line
+		#		degrees - 2, 2, 1, 1, 0
+		#	Disconnected K_2 and 3-line
+		#		degrees - 2, 1, 1, 1, 1
+		elif len(edges) == 3:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if (
+				d[0] == 2 and d[1] == 2 and d[2] == 2
+			):
+				edges.pop(-1)
+			continue
+		# 4 edges cases:
+		#	4-dipper (revert)
+		#		degrees - 3, 2, 2, 1, 0
+		#	4-ring
+		#		degrees - 2, 2, 2, 2, 0
+		#	disconnected K_2 and K_3 (revert)
+		#		degrees - 2, 2, 2, 1, 1
+		#	5-star
+		#		degrees - 4, 1, 1, 1, 1
+		#	5-tee
+		#		degrees - 3, 2, 1, 1, 1
+		#	5-line
+		#		degrees - 2, 2, 2, 1, 1
+		elif len(edges) == 4:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if (
+				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and (
+				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			):
+				# If the degree 1 nodes are adjacent, revert
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[j] == 1 and i != j:
+						break
+				if (i,j) in edges or (j,i) in edges:
+					edges.pop(-1)
+			continue
+		# 5 edges cases:
+		#	4-ring with bridge (revert)
+		#		degrees - 3, 3, 2, 2, 0
+		#	5-star plus extra edge (revert)
+		#		degrees - 4, 2, 2, 1, 1
+		#	K_3 with 2 branches (revert)
+		#		degrees - 3, 3, 2, 1, 1
+		#	5-ring (revert)
+		#		degrees - 2, 2, 2, 2, 2
+		#	4-dipper with long handle (revert)
+		#		degrees - 3, 2, 2, 2, 1
+		#		Check for embedded K_3 to distinguish from 5 dipper
+		#	5-dipper
+		#		degrees - 3, 2, 2, 2, 1
+		elif len(edges) == 5:
+			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
+			d = sorted(list(vertex_degrees.values()), reverse=True)
+			if options["blocksize"] <= 4 and (
+				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 2
+			):
+				edges.pop(-1)
+			elif options["blocksize"] > 4 and ((
+				d[0] == 4 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			) or (
+				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			) or (
+				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 2 and d[4] == 2
+			) or (
+				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 2 and d[4] == 0
+			)):
+				edges.pop(-1)
+			elif (
+				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 1 and d[4] == 1
+			):
+				# Check to see if the degree 1 vertex is adjacent to the degree 3
+				# vertex. If not, pop edge, K_3 embedded
+				for i in vertex_degrees.keys():
+					if vertex_degrees[i] == 1:
+						break
+				for j in vertex_degrees.keys():
+					if vertex_degrees[3] == 3:
+						break
+				if (i,j) in edges or (j,i) in edges:
+					edges.pop(-1)
+			continue
+		# Only blocksize 5 is supported
+		elif len(edges) > 5:
+			edges.pop(-1)
 
-		# If there are 5 edges, We have a ring with a bridge. Tests show that if 
-		# there is a vertex that is used more than the others (by about 3), then
-		# we should select a star. Otherwise select a ring. Add edges based on
-		# their frequencies.
-		elif number_edges == 5:
-			v_uses_list = sorted(vertex_uses.values(), reverse=True)
-			if v_uses_list[0] - 3 >= v_uses_list[1]:
-				return best_star_kernel(vertex_uses)
-			else:
-				return best_ring_kernel(op_set, freqs)
-		# We have K_4
-		# Return a ring
-		else:
-			return best_ring_kernel(op_set, freqs)
+	return edges
 
 
 def run_stats(
@@ -611,9 +797,9 @@ def select_kernel(
 	qudit_group : Sequence[int],
 	options : dict[str],
 ) -> Graph | None:
-	if options["coupling_map"] == "mesh":
+	if options["topology"] == "mesh":
 		return select_mesh_kernel(circuit_file, qudit_group, options)
-	elif options["coupling_map"] == "falcon":
+	elif options["topology"] == "falcon":
 		return select_falcon_kernel(circuit_file, qudit_group, options)
 	else:
 		return select_linear_kernel(circuit_file, qudit_group, options)

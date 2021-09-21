@@ -123,6 +123,7 @@ def setup_options(
 	options = {
 		"blocksize"	 : args.blocksize,
 		"coupling_map"   : f"coupling_maps/{coupling_map}",
+		"topology" : args.map_type,
 		"num_p" : num_p,
 		"partitioner" : partitioner,
 		"decomposer" : args.decomposer,
