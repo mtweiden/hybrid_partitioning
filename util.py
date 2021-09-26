@@ -157,7 +157,7 @@ def setup_options(
 	options["target_name"] = target_name
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name + ".qasm"
 	options["resynthesized_qasm_file"] = "resynthesized_qasm/" + target_name + ".qasm"
-	options["mapped_qasm_file"] = "mapped_qasm/" + target_name + ".qasm"
+	options["mapped_qasm_file"] = "mapped_qasm/" + target_name + f"_{args.router}" + ".qasm"
 	options["remapped_qasm_file"] = "mapped_qasm/" + target_name + "_remapped" + ".qasm"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
 	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
