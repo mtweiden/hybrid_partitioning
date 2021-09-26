@@ -55,6 +55,10 @@ if __name__ == '__main__':
 		default="mesh", type=str,
 		help="[mesh | linear | falcon]"
 	)
+	parser.add_argument("--router", dest="router", action="store",
+		default="pytket", type=str,
+		help="[pytket | qiskit]"
+	)
 	parser.add_argument("--alltoall",action="store_true",
 		help="synthesize to all to all")
 	args = parser.parse_args()
@@ -239,6 +243,7 @@ if __name__ == '__main__':
 					options["synthesized_qasm_file"], 
 					options["coupling_map"], 
 					options["mapped_qasm_file"],
+					options,
 				)
 			else:
 				dummy_routing(

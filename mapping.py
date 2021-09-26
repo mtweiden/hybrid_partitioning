@@ -6,6 +6,9 @@ from qiskit import QuantumCircuit
 from qiskit.transpiler import CouplingMap
 from qiskit.transpiler.passes import SabreLayout, SabreSwap
 from qiskit.transpiler.passmanager import PassManager
+from pytket.qasm import circuit_to_qasm_str, circuit_from_qasm
+from pytket.routing import Architecture, route
+from pytket.transform import Transform
 # Standard dependencies
 from math import ceil, sqrt
 from re import match, findall
@@ -60,23 +63,32 @@ def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 					out_qasm.write(format(line, l2p_map))
 
 
-def do_routing(input_qasm_file, coupling_map_file, output_qasm_file):
+def do_routing(input_qasm_file, coupling_map_file, output_qasm_file, options=None):
+
+	router = options["router"] if options is not None else "pytket"
 
 	# Gather circuit data
-	circ = QuantumCircuit.from_qasm_file(input_qasm_file)
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
-	# Set up Passes
-	seed = 42
-	router = SabreSwap(
-		coupling_map=CouplingMap(list(coupling_graph)),
-		heuristic='lookahead',
-		seed=seed
-	)
-	pass_man = PassManager([router])
 
-	# Create circuit with new layout and layout dictionary
-	new_circ = pass_man.run(circ)
-	new_qasm = new_circ.qasm()
+	if router == "qiskit":
+		circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+		# Set up Passes
+		seed = 42
+		router = SabreSwap(
+			coupling_map=CouplingMap(list(coupling_graph)),
+			heuristic='lookahead',
+			seed=seed
+		)
+		pass_man = PassManager([router])
+		# Create circuit with new layout and layout dictionary
+		new_circ = pass_man.run(circ)
+		new_qasm = new_circ.qasm()
+	elif router == "pytket":
+		circ = circuit_from_qasm(input_qasm_file)
+		arch = Architecture(connections=list(coupling_graph))
+		routed_circ = route(circuit=circ, architecture=arch)
+		Transform.DecomposeBRIDGE().apply(routed_circ)
+		new_qasm = circuit_to_qasm_str(routed_circ)
 
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
