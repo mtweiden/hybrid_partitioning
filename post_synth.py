@@ -15,6 +15,7 @@ import networkx as nx
 from weighted_topology import check_multi, collect_stats_tuples, get_logical_operations, is_same
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from posix import listdir
+from bqskit.compiler.passes.util.unfold import U
 
 
 def count_swaps(
