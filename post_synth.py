@@ -124,7 +124,8 @@ def replace_blocks(
 		with open(synthesized_qasm_file, "r") as f:
 			synthesized_qasm = f.read()
 			cnots = re.findall("cx ", synthesized_qasm)
-		synthesized_count = len(cnots)
+			swaps = re.findall("swap ", synthesized_qasm)
+		synthesized_count = len(cnots) + 3 * len(swaps)
 		# Count cnots & swaps in routed
 		with open(output_qasm_file, "r") as f:
 			routed_qasm = f.read()
@@ -133,9 +134,9 @@ def replace_blocks(
 		routed_count = len(cnots) + 3 * len(swaps)
 
 		# Put the smaller block in the resynth directory
-		repalced_qasm = options["resynthesis_dir"] + "/" + blocks[block_num]
-		if not exists(repalced_qasm):
-			with open(repalced_qasm, "w") as f:
+		replaced_qasm = options["resynthesis_dir"] + "/" + blocks[block_num]
+		if not exists(replaced_qasm):
+			with open(replaced_qasm, "w") as f:
 				if synthesized_count <= routed_count:
 					f.write(synthesized_qasm)
 				else:
@@ -148,13 +149,13 @@ def replace_blocks(
 	if reroute_flag:
 		# Recreate new synthesized qasm file
 		new_circ = Circuit(options['num_p'])
-		for block_num in range(len(structure)):
+		for block_num in range(len(blocks)):
 			with open(
 				f"{options['resynthesis_dir']}/{blocks[block_num]}", "r"
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
-			group_len = subcircuit.size
+			group_len = subcircuit.num_qudits
 			qudit_group = [structure[block_num][x] for x in range(group_len)]
 			new_circ.append_circuit(subcircuit, qudit_group)
 		

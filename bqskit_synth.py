@@ -13,7 +13,7 @@ from re import search
 from numpy import ndarray
 
 from bqskit import CompilationTask
-#from bqskit.compiler.passes.synthesis.qsearch import QSearchSynthesisPass
+from bqskit.compiler.passes.synthesis.qsearch import QSearchSynthesisPass
 from bqskit.compiler.passes.synthesis.old_leap import OldLeap
 #from bqskit.compiler.passes.synthesis.old_leap import synthesize_unitary
 from bqskit.compiler.passes.synthesis.qfast import QFASTDecompositionPass
@@ -68,16 +68,17 @@ def synthesize(
 		data = {"machine_model": model}
 		# Load circuit
 		subcircuit = load_block_circuit(block_path, options)
-		#unitary = subcircuit.get_unitary().get_numpy()
-		task = CompilationTask(subcircuit, [QFASTDecompositionPass()])
+		#task = CompilationTask(subcircuit, [QFASTDecompositionPass()])
 		# Synthesize
 		print("Using edges: ", subtopology)
 		if options["decomposer"] == "qpredict":
-			QPredictDecompositionPass().run(subcircuit, data)
+			#QPredictDecompositionPass(block_size_limit=3, fail_limit=4).run(subcircuit, data)
+			QPredictDecompositionPass(block_size_limit=3, fail_limit=4).run(subcircuit, {})
 			#QPredictDecompositionPass().run(subcircuit, {})
 		elif options["decomposer"] == "qfast":
 			QFASTDecompositionPass().run(subcircuit, data)
 			#QFASTDecompositionPass().run(subcircuit, {})
+
 		#QSearchSynthesisPass().run(subcircuit, data)
 		#VariableToU3Pass().run(subcircuit, {})
 		#subcircuit_qasm = OPENQASM2Language().encode(subcircuit)

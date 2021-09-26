@@ -771,6 +771,7 @@ def run_stats(
 	options : dict[str, Any],
 	post_stats : bool = False,
 	resynthesized : bool = False,
+	remapped : bool = False,
 ) -> str:
 	# Get the subtopology files
 	sub_files = listdir(options["subtopology_dir"])
