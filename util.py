@@ -137,13 +137,14 @@ def setup_options(
 		"min_block_length" : 0,
 		"estimated_cnots" : 0,
 		"total_volume" : 0,
+		"router" : args.router,
 	}
 
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
 	target_name += "_" + coupling_map
 	target_name += f"_blocksize_{args.blocksize}"
 
-	options["layout_qasm_file"] = "layout_qasm/" + target_name
+	options["layout_qasm_file"] = "layout_qasm/" + target_name + ".qasm"
 
 	target_name += f"_{partitioner}"
 
@@ -154,10 +155,10 @@ def setup_options(
 
 	target_name += suffix
 	options["target_name"] = target_name
-	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name
-	options["resynthesized_qasm_file"] = "resynthesized_qasm/" + target_name
-	options["mapped_qasm_file"] = "mapped_qasm/" + target_name
-	options["remapped_qasm_file"] = "mapped_qasm/" + target_name + "_remapped"
+	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name + ".qasm"
+	options["resynthesized_qasm_file"] = "resynthesized_qasm/" + target_name + ".qasm"
+	options["mapped_qasm_file"] = "mapped_qasm/" + target_name + ".qasm"
+	options["remapped_qasm_file"] = "mapped_qasm/" + target_name + "_remapped" + ".qasm"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
 	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
