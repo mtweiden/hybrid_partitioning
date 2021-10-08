@@ -138,6 +138,7 @@ def setup_options(
 		"estimated_cnots" : 0,
 		"total_volume" : 0,
 		"router" : args.router,
+		"original_qasm_file" : qasm_file,
 	}
 
 	target_name = qasm_file.split("qasm/")[-1].split(".qasm")[0]
@@ -161,6 +162,7 @@ def setup_options(
 	options["remapped_qasm_file"] = "mapped_qasm/" + f"{target_name}_{args.router}_remapped.qasm"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
 	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
+	options["nosynth_dir"] = options["synthesis_dir"] + f"_{args.router}_nosynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 	options["kernel_dir"] = f"kernels/{coupling_map}_blocksize_{args.blocksize}"
 
@@ -221,7 +223,7 @@ def get_remapping_results(
 def get_original_count(
 	options : dict[str, Any],
 ) -> str:
-	path = options["layout_qasm_file"]
+	path = options["original_qasm_file"]
 	cnots = 0
 	with open(path, "r") as qasmfile:
 		for line in qasmfile:

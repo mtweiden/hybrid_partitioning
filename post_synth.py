@@ -7,6 +7,7 @@ from typing import Any
 from bqskit.ir.circuit import Circuit
 
 from networkx.drawing import layout
+from coupling import get_coupling_map
 from mapping import do_routing
 import math
 import pickle
@@ -115,8 +116,17 @@ def replace_blocks(
 		topology = options["subtopology_dir"] + "/" + topologies[block_num]
 		if not exists(output_qasm_file):
 			reroute_flag = True
-			print(f"Routing block {block_num}/{len(blocks)}")
-			do_routing(input_qasm_file, topology, output_qasm_file)
+			(_, coupling_graph) = get_coupling_map(topology)
+			print(
+				f"Routing block {block_num+1}/{len(blocks)} "
+				f"with coupling map {coupling_graph}..."
+			)
+			# If routing cannot be done, copy over synthesized file
+			synthesized_qasm_file = options["synthesis_dir"] + "/" + blocks[block_num]
+			if not do_routing(input_qasm_file, topology, output_qasm_file):
+				with open(output_qasm_file, "w") as out_f:
+					with open(synthesized_qasm_file, "r") as in_f:
+						out_f.write(in_f.read())
 
 		# Determine whether each file would have been shorter had it been routed
 		# Count cnots in synthesized
@@ -155,7 +165,7 @@ def replace_blocks(
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
-			group_len = subcircuit.num_qudits
+			group_len = subcircuit.get_size()
 			qudit_group = [structure[block_num][x] for x in range(group_len)]
 			new_circ.append_circuit(subcircuit, qudit_group)
 		

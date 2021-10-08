@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from qiskit import QuantumCircuit
+import qiskit
 from qiskit.transpiler import CouplingMap
 from qiskit.transpiler.passes import SabreLayout, SabreSwap
 from qiskit.transpiler.passmanager import PassManager
@@ -63,26 +64,46 @@ def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 					out_qasm.write(format(line, l2p_map))
 
 
-def do_routing(input_qasm_file, coupling_map_file, output_qasm_file, options=None):
-
-	router = options["router"] if options is not None else "pytket"
+def do_routing(
+	input_qasm_file, 
+	coupling_map_file, 
+	output_qasm_file, 
+	options=None,
+	do_layout=False
+) -> bool:
+	router = options["router"] if options is not None else "qiskit"
 
 	# Gather circuit data
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
 
 	if router == "qiskit":
-		circ = QuantumCircuit.from_qasm_file(input_qasm_file)
-		# Set up Passes
-		seed = 42
-		router = SabreSwap(
-			coupling_map=CouplingMap(list(coupling_graph)),
-			heuristic='lookahead',
-			seed=seed
-		)
-		pass_man = PassManager([router])
-		# Create circuit with new layout and layout dictionary
-		new_circ = pass_man.run(circ)
-		new_qasm = new_circ.qasm()
+		try:
+			circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+			# Set up Passes
+			#seed = 42
+			coup_map = CouplingMap(list(coupling_graph))
+			layout = SabreLayout(
+				coupling_map=coup_map,
+				routing_pass=SabreSwap(coupling_map=coup_map,heuristic="lookahead"),
+				max_iterations=10,
+				#seed=seed,
+			)
+			routing = SabreSwap(
+				coupling_map=coup_map,
+				heuristic='lookahead',
+				#seed=seed
+			)
+			pass_man = PassManager([layout])
+			circ = pass_man.run(circ)
+			#pass_man = PassManager([routing, layout])
+			#pass_man = PassManager([layout])
+			# Create circuit with new layout and layout dictionary
+			pass_man = PassManager([routing])
+			new_circ = pass_man.run(circ)
+			new_qasm = new_circ.qasm()
+		except qiskit.transpiler.exceptions.CouplingError:
+			print("  WARNING: Router could not handle this coupling graph")
+			return False
 	elif router == "pytket":
 		circ = circuit_from_qasm(input_qasm_file)
 		arch = Architecture(connections=list(coupling_graph))
@@ -92,6 +113,7 @@ def do_routing(input_qasm_file, coupling_map_file, output_qasm_file, options=Non
 
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
+	return True
 
 
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):

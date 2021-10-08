@@ -56,7 +56,7 @@ if __name__ == '__main__':
 		help="[mesh | linear | falcon]"
 	)
 	parser.add_argument("--router", dest="router", action="store",
-		default="pytket", type=str,
+		default="qiskit", type=str,
 		help="[pytket | qiskit]"
 	)
 	parser.add_argument("--alltoall",action="store_true",
@@ -68,33 +68,33 @@ if __name__ == '__main__':
 	if not exists(options["synthesis_dir"]):
 		mkdir(options["synthesis_dir"])
 
-	# Layout
-	#region layout
-	print("="*80)
-	print(f"Doing layout for {options['target_name']}...")
-	print("="*80) 
-	if exists(options["layout_qasm_file"]):
-		print("Found existing file for %s, skipping layout" 
-			%(options["layout_qasm_file"]))
-	else:
-		if not args.dummy_map:
-			do_layout(
-				args.qasm_file, 
-				options["coupling_map"], 
-				options["layout_qasm_file"]
-			)
-		else:
-			dummy_layout(
-				args.qasm_file, 
-				options["coupling_map"], 
-				options["layout_qasm_file"]
-			)
-	#endregion
+#	# Layout
+#	#region layout
+#	print("="*80)
+#	print(f"Doing layout for {options['target_name']}...")
+#	print("="*80) 
+#	if exists(options["layout_qasm_file"]):
+#		print("Found existing file for %s, skipping layout" 
+#			%(options["layout_qasm_file"]))
+#	else:
+#		if not args.dummy_map:
+#			do_layout(
+#				args.qasm_file, 
+#				options["coupling_map"], 
+#				options["layout_qasm_file"]
+#			)
+#		else:
+#			dummy_layout(
+#				args.qasm_file, 
+#				options["coupling_map"], 
+#				options["layout_qasm_file"]
+#			)
+#	#endregion
 
 	# Partitioning on logical topology
 	#region partitioning
 	print("="*80)
-	print("Doing logical partitioning on %s..." %(options["target_name"]))
+	print(f"Doing logical partitioning on {options['target_name']}...")
 	print("="*80)
 	if exists(f"{options['partition_dir']}/structure.pickle"):
 		print(
@@ -102,11 +102,10 @@ if __name__ == '__main__':
 			", skipping partitioning..."
 		)
 	else:
-		with open(options["layout_qasm_file"], 'r') as f:
+		with open(options["original_qasm_file"], 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
 		
 		if options["partitioner"] == "greedy":
-			#partitioner = GreedyPartitioner(args.blocksize, "cost_based")
 			partitioner = GreedyPartitioner(args.blocksize)
 		elif options["partitioner"] == "quick":
 			partitioner = QuickPartitioner(args.blocksize)
@@ -127,7 +126,7 @@ if __name__ == '__main__':
 		saver = SaveIntermediatePass(
 			"block_files/", 
 			options["save_part_name"],
-			options["checkpoint_as_qasm"]
+			save_as_qasm=True,
 		)
 		saver.run(circuit, {})
 
