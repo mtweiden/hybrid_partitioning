@@ -14,6 +14,7 @@ from pytket.transform import Transform
 from math import ceil, sqrt
 from re import match, findall
 from sys import argv
+from random import shuffle
 # Project dependiences
 from coupling import get_coupling_map
 
@@ -95,9 +96,6 @@ def do_routing(
 			)
 			pass_man = PassManager([layout])
 			circ = pass_man.run(circ)
-			#pass_man = PassManager([routing, layout])
-			#pass_man = PassManager([layout])
-			# Create circuit with new layout and layout dictionary
 			pass_man = PassManager([routing])
 			new_circ = pass_man.run(circ)
 			new_qasm = new_circ.qasm()
@@ -150,6 +148,12 @@ def dummy_synthesis(
 
 	with open(f"{synth_dir}.qasm", "w") as f:
 		f.write(block_qasm)
+
+
+def random_layout_dict(num_qudits : int) -> dict[int,int]:
+	qudits = [x for x in range(num_qudits)]
+	shuffle(qudits)
+	return {k:qudits[k] for k in range(len(qudits))}
 
 
 def format(input_line, layout_map) -> str:

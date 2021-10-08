@@ -106,7 +106,9 @@ def get_coupling_map(
             coup_map = load(f)
         qudits = [x[0] for x in coup_map]
         qudits.extend([x[1] for x in coup_map])
-        num_p = max(qudits) + 1
+        num_p = 0
+        if len(qudits) > 0:
+            num_p = max(qudits) + 1
         file_name = coupling_type_or_file
     else:
         if coupling_type_or_file == "mesh":
