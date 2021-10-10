@@ -94,12 +94,11 @@ def do_routing(
 				heuristic='lookahead',
 				#seed=seed
 			)
-			pass_man = PassManager([layout])
-			circ = pass_man.run(circ)
-			pass_man = PassManager([routing])
+			pass_man = PassManager([layout, routing])
 			new_circ = pass_man.run(circ)
 			new_qasm = new_circ.qasm()
-		except qiskit.transpiler.exceptions.CouplingError:
+		except (qiskit.transpiler.exceptions.CouplingError,
+			qiskit.transpiler.exceptions.TranspilerError):
 			print("  WARNING: Router could not handle this coupling graph")
 			return False
 	elif router == "pytket":
@@ -130,6 +129,29 @@ def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 					out_qasm.write(line)
 
 
+def random_layout_dict(num_qudits : int) -> dict[int,int]:
+	qudits = [x for x in range(num_qudits)]
+	shuffle(qudits)
+	return {k:qudits[k] for k in range(len(qudits))}
+
+
+def random_layout(input_qasm_file, coupling_map_file, output_qasm_file):
+	# Make a random layout 
+	circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+	num_logical_qubits = circ.width()
+	(num_q, _) = get_coupling_map(coupling_map_file, 
+		num_logical_qubits, make_coupling_map_flag=True)
+	layout_dict = random_layout_dict(num_q)
+	# WRITE NEW QASM
+	with open(input_qasm_file, 'r') as in_qasm:
+		with open(output_qasm_file, 'w') as out_qasm:
+			for line in in_qasm:
+				if match('qreg q\[\d+\];', line):
+					out_qasm.write(f'qreg q[{num_q}];\n')
+				else:
+					out_qasm.write(format(line, layout_dict))
+
+
 def dummy_routing(input_qasm_file, coupling_map_file, output_qasm_file):
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
@@ -148,12 +170,6 @@ def dummy_synthesis(
 
 	with open(f"{synth_dir}.qasm", "w") as f:
 		f.write(block_qasm)
-
-
-def random_layout_dict(num_qudits : int) -> dict[int,int]:
-	qudits = [x for x in range(num_qudits)]
-	shuffle(qudits)
-	return {k:qudits[k] for k in range(len(qudits))}
 
 
 def format(input_line, layout_map) -> str:

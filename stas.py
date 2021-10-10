@@ -45,9 +45,6 @@ if __name__ == '__main__':
 		default="quick", type=str, help="partitioner to use [scan | greedy]"
 	)
 	parser.add_argument(
-		"--dummy_map", action="store_true", help="turn off layout and routing"
-	)
-	parser.add_argument(
 		"--partition_only", action="store_true",
 		help="skip synthesis and routing"
 	)
@@ -61,6 +58,10 @@ if __name__ == '__main__':
 	)
 	parser.add_argument("--alltoall",action="store_true",
 		help="synthesize to all to all")
+	parser.add_argument("--layout", dest="layout", action="store",
+		default="none", type=str,
+		help="[none | random | sabre]"
+	)
 	args = parser.parse_args()
 	#endregion
 
@@ -68,28 +69,34 @@ if __name__ == '__main__':
 	if not exists(options["synthesis_dir"]):
 		mkdir(options["synthesis_dir"])
 
-#	# Layout
-#	#region layout
-#	print("="*80)
-#	print(f"Doing layout for {options['target_name']}...")
-#	print("="*80) 
-#	if exists(options["layout_qasm_file"]):
-#		print("Found existing file for %s, skipping layout" 
-#			%(options["layout_qasm_file"]))
-#	else:
-#		if not args.dummy_map:
-#			do_layout(
-#				args.qasm_file, 
-#				options["coupling_map"], 
-#				options["layout_qasm_file"]
-#			)
-#		else:
-#			dummy_layout(
-#				args.qasm_file, 
-#				options["coupling_map"], 
-#				options["layout_qasm_file"]
-#			)
-#	#endregion
+	# Layout
+	#region layout
+	print("="*80)
+	print(f"Doing layout for {options['target_name']}...")
+	print("="*80) 
+	if exists(options["layout_qasm_file"]):
+		print("Found existing file for %s, skipping layout" 
+			%(options["layout_qasm_file"]))
+	else:
+		if args.layout == "sabre":
+			do_layout(
+				args.qasm_file, 
+				options["coupling_map"], 
+				options["layout_qasm_file"],
+			)
+		elif args.layout == "random": 
+			random_layout(
+				args.qasm_file,
+				options["coupling_map"], 
+				options["layout_qasm_file"],
+			)
+		else:
+			dummy_layout(
+				args.qasm_file, 
+				options["coupling_map"], 
+				options["layout_qasm_file"],
+			)
+	#endregion
 
 	# Partitioning on logical topology
 	#region partitioning
@@ -102,7 +109,8 @@ if __name__ == '__main__':
 			", skipping partitioning..."
 		)
 	else:
-		with open(options["original_qasm_file"], 'r') as f:
+		#with open(options["original_qasm_file"], 'r') as f:
+		with open(options["layout_qasm_file"], 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
 		
 		if options["partitioner"] == "greedy":
