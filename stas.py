@@ -45,6 +45,10 @@ if __name__ == '__main__':
 		default="quick", type=str, help="partitioner to use [scan | greedy]"
 	)
 	parser.add_argument(
+		"--dummy_map", action="store_true",
+		help="skip synthesis and routing"
+	)
+	parser.add_argument(
 		"--partition_only", action="store_true",
 		help="skip synthesis and routing"
 	)
