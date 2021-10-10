@@ -12,7 +12,7 @@ from bqskit.compiler.passes.partitioning.greedy import GreedyPartitioner
 from bqskit.compiler.passes.partitioning.quick import QuickPartitioner
 from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
 
-from mapping import do_layout, do_routing
+from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
 from weighted_topology import get_logical_operations, run_stats, select_kernel
 from util import (
