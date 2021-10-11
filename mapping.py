@@ -80,23 +80,27 @@ def do_routing(
 	if router == "qiskit":
 		try:
 			circ = QuantumCircuit.from_qasm_file(input_qasm_file)
-			# Set up Passes
-			#seed = 42
-			coup_map = CouplingMap(list(coupling_graph))
-			layout = SabreLayout(
-				coupling_map=coup_map,
-				routing_pass=SabreSwap(coupling_map=coup_map,heuristic="lookahead"),
-				max_iterations=10,
-				#seed=seed,
-			)
-			routing = SabreSwap(
-				coupling_map=coup_map,
-				heuristic='lookahead',
-				#seed=seed
-			)
-			pass_man = PassManager([layout, routing])
-			new_circ = pass_man.run(circ)
-			new_qasm = new_circ.qasm()
+			if num_q >= circ.width():
+				# Set up Passes
+				#seed = 42
+				coup_map = CouplingMap(list(coupling_graph))
+				layout = SabreLayout(
+					coupling_map=coup_map,
+					routing_pass=SabreSwap(coupling_map=coup_map,heuristic="lookahead"),
+					max_iterations=10,
+					#seed=seed,
+				)
+				routing = SabreSwap(
+					coupling_map=coup_map,
+					heuristic='lookahead',
+					#seed=seed
+				)
+				pass_man = PassManager([layout, routing])
+				new_circ = pass_man.run(circ)
+				new_qasm = new_circ.qasm()
+			else:
+				print("  WARNING: Router could not handle this coupling graph")
+				return False
 		except (qiskit.transpiler.exceptions.CouplingError,
 			qiskit.transpiler.exceptions.TranspilerError):
 			print("  WARNING: Router could not handle this coupling graph")
