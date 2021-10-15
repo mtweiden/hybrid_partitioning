@@ -133,7 +133,7 @@ def synthesize(
 		#]
 		# Load circuit
 		subcircuit = load_block_circuit(block_path, options)
-		unitary = subcircuit.get_unitary().get_numpy()
+		unitary = subcircuit.get_unitary().numpy
 		# Synthesize
 		print("Using edges: ", subtopology)
 		subcircuit_qasm = call_old_codebase_leap(

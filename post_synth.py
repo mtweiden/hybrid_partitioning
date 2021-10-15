@@ -165,7 +165,7 @@ def replace_blocks(
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
-			group_len = subcircuit.get_size()
+			group_len = subcircuit.num_qudits
 			qudit_group = [structure[block_num][x] for x in range(group_len)]
 			new_circ.append_circuit(subcircuit, qudit_group)
 		

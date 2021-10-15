@@ -7,10 +7,10 @@ from post_synth import replace_blocks
 from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
-from bqskit.compiler.passes.partitioning.scan import ScanPartitioner
-from bqskit.compiler.passes.partitioning.greedy import GreedyPartitioner
-from bqskit.compiler.passes.partitioning.quick import QuickPartitioner
-from bqskit.compiler.passes.util.intermediate import SaveIntermediatePass
+from bqskit.passes.partitioning.scan import ScanPartitioner
+from bqskit.passes.partitioning.greedy import GreedyPartitioner
+from bqskit.passes.partitioning.quick import QuickPartitioner
+from bqskit.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 			# Handle the case where the circuit is still smaller than the qudit
 			# group, should only happen on circuits synthesized in an older
 			# version.
-			group_len = subcircuit.size
+			group_len = subcircuit.num_qudits
 			qudit_group = [structure[block_num][x] for x in range(group_len)]
 			synthesized_circuit.append_circuit(subcircuit, qudit_group)
 
