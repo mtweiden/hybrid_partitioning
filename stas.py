@@ -14,7 +14,7 @@ from bqskit.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
-from weighted_topology import get_logical_operations, run_stats, select_kernel
+from topology import get_logical_operations, run_stats, select_kernel
 from util import (
 	load_circuit_structure,
 	save_block_topology,
