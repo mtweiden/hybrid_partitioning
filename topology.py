@@ -816,15 +816,15 @@ def run_stats(
 		f"Average CNOTs: {format(mean(cnots_list), '.3f')}\n"
 		f"Average depth: {format(mean(depth_list), '.3f')}\n"
 		f"Average score: {format(mean(score_list), '.3f')}\n"
-		f"Kernel counts:\n"
 	)
-	for k in sorted(list(kernel_dict.keys())):
-		string += f"  {k}: {kernel_dict[k]}\n"
 	if post_stats:
 		string += get_mapping_results(options)
 	elif resynthesized:
 		string += get_remapping_results(options)
 	else:
+		string += f"Kernel counts:\n"
+		for k in sorted(list(kernel_dict.keys())):
+			string += f"  {k}: {kernel_dict[k]}\n"
 		string += get_original_count(options)
 	return string
 
