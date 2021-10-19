@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Sequence
+from qiskit.circuit.quantumcircuit import QuantumCircuit
 
 from qsearch import (
 	Project,
@@ -15,6 +16,7 @@ from shutil import rmtree
 from os.path import exists
 from psutil import cpu_count
 from re import search
+from qiskit.compiler import transpile
 
 from numpy import ndarray
 
@@ -141,6 +143,11 @@ def synthesize(
 			subtopology,
 			synth_dir,
 		)
+		subcircuit_qasm = transpile(
+			QuantumCircuit().from_qasm_str(subcircuit_qasm),
+			basis_gates=['cx','u3']
+		).qasm()
+
 		with open(f"{synth_dir}.qasm", "w") as f:
 			f.write(subcircuit_qasm)
 

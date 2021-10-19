@@ -2,28 +2,17 @@
 Takes a circuit (qasm file) and a physical topology and produces a hybrid 
 logical-physical topology.
 """
-
 from __future__ import annotations
-import itertools
-from logging import log
 import pickle
 from posix import listdir
-import re
-from sys import intern
 from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
-from pickle import load
-
-from networkx.classes.function import degree
 
 from util import get_mapping_results, get_original_count, get_remapping_results, load_block_circuit, load_block_topology
 from networkx import Graph, shortest_path_length
 import networkx
-from networkx.algorithms.shortest_paths.generic import shortest_path
-from itertools import combinations
 from bqskit import Circuit
-from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
-from networkx.generators.ego import ego_graph
+from statistics import mean
 
 
 def check_multi(qasm_line) -> tuple[int] | None:
@@ -56,7 +45,7 @@ def get_logical_operations(
 	logical_operations = []
 	for op in circuit:
 		if len(op.location) > 1:
-			# TODO: handle multi qubit gates
+			# TODO: handle multi qubit gates > size 2
 			if qudit_group is not None:
 				a = min([qudit_group[op.location[0]], 
 					qudit_group[op.location[1]]])
@@ -155,118 +144,108 @@ def get_direct_edges(
 	]
 
 
-def collect_stats_tuples(
-	circuit : Circuit,
-	physical_graph : Graph, 
-	kernel : Graph | Sequence[tuple[int]],
-	qudit_group : Sequence[int],
-	blocksize : int | None = None,
-	options : dict[str, Any] | None = None,
-) -> Sequence:
-	# NOTE: may break if idle qudit are removed
-	blocksize = len(qudit_group) if blocksize is None else blocksize
-	logical_ops = get_logical_operations(circuit, qudit_group)
-
-	direct = get_direct_edges(logical_ops, physical_graph)
-	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
-	external = get_external_edges(logical_ops, physical_graph, qudit_group)
-
-	active_qudits = circuit.active_qudits
-
-	total_ops = sum([len(direct), len(indirect), len(external)])
-
-	pre_stats = (
-		# active qudits
-		len(active_qudits),
-		# direct ops
-		len(direct),
-		# indirect ops
-		len(indirect),
-		# external ops
-		len(external),
-		# cnot count
-		total_ops,
-	)
-
-	subtopology_stats = (
-		# number of edges
-		len(kernel),
-		# Kernel name
-		kernel_name(kernel, blocksize)
-	)
-
-	return (pre_stats, subtopology_stats)
+def possible_kernel_names(blocksize, top_name) -> list[str]:
+	if top_name == "mesh" and blocksize == 3:
+		return ["2-line", "3-line"]
+	if top_name == "falcon" and blocksize == 3:
+		return ["2-line", "3-line"]
+	if top_name == "linear" and blocksize == 3:
+		return ["2-line", "3-line"]
+	if top_name == "mesh" and blocksize == 4:
+		return ["2-line", "3-line", "4-line", "2-discon", "4-star", "4-ring"]
+	if top_name == "falcon" and blocksize == 4:
+		return ["2-line", "3-line", "4-line", "2-discon", "4-star"]
+	if top_name == "linear" and blocksize == 4:
+		return ["2-line", "3-line", "4-line", "2-discon"]
 
 
-def kernel_name(kernel, blocksize) -> str:
-	if len(kernel) == 4:
-		kernel_type = "ring"
-	elif len(kernel) < 3:
-		kernel_type = "linear"
-	else:
-		# kernel is a star if there is a degree 3 vertex
-		degrees = {x:0 for x in range(blocksize)}
-		for edge in kernel:
-			degrees[edge[0]] += 1
-			degrees[edge[1]] += 1
-		if max(degrees.values()) == 3:
-			kernel_type = "star"
-		elif max(degrees.values()) == 2:
-			kernel_type = "linear"
+def kernel_type(kernel_edges, blocksize) -> str:
+	kernel_name = "unknown"
+	degrees = get_num_vertex_uses(kernel_edges, blocksize)
+	deg_list = sorted(list(degrees.values()))
+
+	# 2-line: only one with 1 edge
+	if len(kernel_edges) == 1:
+		kernel_name = "2-line"
+	elif blocksize == 3:
+		# 3-line: 2 edges and 3 distinct qubits
+		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
+		if len(kernel_edges) == 2: 
+			if deg_list[0] == 1 and deg_list[1] == 1 and deg_list[2] == 2:
+				kernel_name = "3-line"
+	elif blocksize == 4:
+		# 3-line: 2 edges and 3 distinct qubits
+		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
+		if len(kernel_edges) == 2: 
+			if deg_list[0] == 0 and all([deg_list[i] > 0 for i in range(1,4)]):
+				kernel_name = "3-line"
+			if all([deg_list[i] == 1 for i in range(0,4)]):
+				kernel_name = "2-discon"
+		# 4-star: 3 edges, one vertex with degree 3
+		# 4-line: 3 edges, degrees 1,1,2,2
+		elif len(kernel_edges) == 3:
+			if deg_list[3] == 3:
+				kernel_name == "4-star"
+			if deg_list[0] == deg_list[1] == 1 and deg_list[2] == deg_list[3] == 2:
+				kernel_name == "4-line"
+		# 4-ring: 4 edges
+		elif len(kernel_edges) == 4:
+			kernel_name = "4-ring"
+
+	return kernel_name
+
+
+def kernel_matching_score(
+	kernel_edges  : Sequence[tuple[int]],
+	logical_edges : Sequence[tuple[int]],
+) -> int:
+	"""
+	Return the matching score defined by:
+		frequency of edges in kernel - frequency of edges not in kernel
+	"""
+	in_kernel     = 0
+	not_in_kernel = 0
+	for (a,b) in logical_edges:
+		if (a,b) in kernel_edges or (b,a) in kernel_edges:
+			in_kernel += 1
 		else:
-			kernel_type = "unknown"
-	return kernel_type
+			not_in_kernel += 1
+	return in_kernel - not_in_kernel
+
 
 
 def collect_stats(
-	circuit : Circuit,
-	physical_graph : Graph, 
-	kernel: Sequence[tuple[int]],
 	qudit_group : Sequence[int],
-	blocksize : int | None = None,
-	options : dict[str, Any] | None = None,
+	block_dir   : str,
+	block_name  : str,
+	blocksize   : int,
+	options     : dict[str, Any],
 ) -> str:
-	# NOTE: may break if idle qudit are removed
+	"""
+	Given a circuit name/directory and a block number, determine:
+		Number of active qudits
+		Block size
+			CNOT count
+			Block depth
+		Kernel type
+		Matching score
+	"""
 	blocksize = len(qudit_group) if blocksize is None else blocksize
-	logical_ops = get_logical_operations(circuit, qudit_group)
+	subcircuit = load_block_circuit(f"{block_dir}/{block_name}", options)
+	kernel_path = f"{block_name.split('.qasm')[0]}_kernel.pickle"
+	kernel = load_block_topology(f"{options['subtopology_dir']}/{kernel_path}")
 
-	direct = get_direct_edges(logical_ops, physical_graph)
-	indirect = get_indirect_edges(logical_ops, physical_graph, qudit_group)
-	external = get_external_edges(logical_ops, physical_graph, qudit_group)
-	
-	active_qudits = circuit.active_qudits
+	active_qudits = subcircuit.active_qudits
+	logical_ops = get_logical_operations(subcircuit, qudit_group)
+	kernel_name = kernel_type(kernel, blocksize)
 
-	kernel_type = kernel_name(kernel, blocksize)
-
-	stats = (
-		f"INFO -\n"
-		f"  blocksize: {blocksize}\n"
-		f"  block: {qudit_group}\n"
-		f"  active: {len(active_qudits)}\n"
-		f"  cnot count: {len(logical_ops)}\n"
-		f"OPERATION COUNTS & VOLUME-\n"
-		f"	direct ops	  : {len(direct)}\n"
-		f"	indirect ops	: {len(indirect)}\n"
-		f"	external ops	: {len(external)}\n"
-		f"SUBTOPOLOGY -\n"
-		f"  kernel : {kernel_type}"
-		f"  {kernel}"
-		f"  number of edges : {len(list(kernel))}\n"
+	return (
+		len(active_qudits), 
+		len(logical_ops),
+		subcircuit.depth,
+		kernel_name,
+		kernel_matching_score(kernel, logical_ops),
 	)
-
-	total_ops = sum([len(direct), len(indirect), len(external)])
-
-	if options is not None:
-		options["direct_ops"] += len(direct)
-		options["indirect_ops"] += len(indirect)
-		options["external_ops"] += len(external)
-		if total_ops > options["max_block_length"]:
-			options["max_block_length"] = total_ops
-		if total_ops < options["min_block_length"] or \
-			options["min_block_length"] == 0:
-			options["min_block_length"] = total_ops
-
-	return stats
 
 
 def get_num_vertex_uses(logical_operations, num_qudits) -> dict[int,int]:
@@ -780,12 +759,15 @@ def run_stats(
 
 	# Get the block files
 	if not post_stats:
-		block_files = listdir(options["partition_dir"])
+		block_dir = options["partition_dir"]
+		block_files = listdir(block_dir)
 		block_files.remove(f"structure.pickle")
 	else:
 		if not resynthesized:
+			block_dir = options["synthesis_dir"]
 			blocks = listdir(options["synthesis_dir"])
 		else:
+			block_dir = options["resynthesis_dir"]
 			blocks = listdir(options["resynthesis_dir"])
 		block_files = []
 		for bf in blocks:
@@ -793,49 +775,32 @@ def run_stats(
 				block_files.append(bf)
 	block_files = sorted(block_files)
 
-	# Init all the needed variables
-	options["direct_ops"]      = 0 
-	options["indirect_ops"]    = 0 
-	options["external_ops"]    = 0 
-
 	# Get the qudit group
 	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
 		structure = pickle.load(f)
 
+	active_qudits_list = []
+	cnots_list  = []
+	depth_list  = []
+	score_list  = []
+	names = possible_kernel_names(options["blocksize"], options["topology"])
+	kernel_dict = { k:0 for k in names }
+
 	# Run collect_stats on each block
 	for block_num in range(len(block_files)):
-		# Get BQSKIT circuit
-		if not post_stats:
-			with open(f"{options['partition_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		elif not resynthesized:
-			with open(f"{options['synthesis_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		else:
-			with open(f"{options['resynthesis_dir']}/{block_files[block_num]}", 
-				"r") as qasm:
-				circ = OPENQASM2Language().decode(qasm.read())
-		
-		# Get physical graph
-		with open(options["coupling_map"], "rb") as graph:
-			physical = pickle.load(graph)
-		pgraph = Graph()
-		pgraph.add_edges_from(physical)
-
-		# Get hybrid graph
-		with open(f"{options['subtopology_dir']}/{sub_files[block_num]}", 
-			"rb") as graph:
-			hybrid = pickle.load(graph)
-		
-		collect_stats(
-			circ,
-			pgraph,
-			hybrid,
-			structure[block_num],
-			options = options,
+		(num_active, cnots, depth, kernel_name, score) = collect_stats(
+			qudit_group=structure[block_num],
+			block_dir=block_dir,
+			block_name=block_files[block_num],
+			blocksize=options["blocksize"],
+			options=options
 		)
+		active_qudits_list.append(num_active)
+		cnots_list.append(cnots)
+		depth_list.append(depth)
+		score_list.append(score)
+		kernel_dict[kernel_name] += 1
+		
 	if resynthesized:
 		string = "REPLACE-\n"
 	elif post_stats:
@@ -844,10 +809,15 @@ def run_stats(
 		string = "PRE-\n"
 
 	string += (
-		f"    direct ops      : {options['direct_ops']}\n"
-		f"    indirect ops    : {options['indirect_ops']}\n"
-		f"    external ops    : {options['external_ops']}\n"
+		f"Total Operations: {sum(cnots_list)}\n"
+		f"Total matching score: {sum(score_list)}\n"
+		f"Average CNOTs: {format(mean(cnots_list), '.3f')}\n"
+		f"Average depth: {format(mean(depth_list), '.3f')}\n"
+		f"Average score: {format(mean(score_list), '.3f')}\n"
+		f"Kernel counts:\n"
 	)
+	for k in sorted(list(kernel_dict.keys())):
+		string += f"  {k}: {kernel_dict[k]}\n"
 	if post_stats:
 		string += get_mapping_results(options)
 	elif resynthesized:
