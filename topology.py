@@ -146,17 +146,17 @@ def get_direct_edges(
 
 def possible_kernel_names(blocksize, top_name) -> list[str]:
 	if top_name == "mesh" and blocksize == 3:
-		return ["2-line", "3-line"]
+		return ["empty", "2-line", "3-line"]
 	if top_name == "falcon" and blocksize == 3:
-		return ["2-line", "3-line"]
+		return ["empty", "2-line", "3-line"]
 	if top_name == "linear" and blocksize == 3:
-		return ["2-line", "3-line"]
+		return ["empty", "2-line", "3-line"]
 	if top_name == "mesh" and blocksize == 4:
-		return ["2-line", "3-line", "4-line", "2-discon", "4-star", "4-ring"]
+		return ["empty", "2-line", "3-line", "4-line", "2-discon", "4-star", "4-ring"]
 	if top_name == "falcon" and blocksize == 4:
-		return ["2-line", "3-line", "4-line", "2-discon", "4-star"]
+		return ["empty", "2-line", "3-line", "4-line", "2-discon", "4-star"]
 	if top_name == "linear" and blocksize == 4:
-		return ["2-line", "3-line", "4-line", "2-discon"]
+		return ["empty", "2-line", "3-line", "4-line", "2-discon"]
 
 
 def kernel_type(kernel_edges, blocksize) -> str:
@@ -165,7 +165,9 @@ def kernel_type(kernel_edges, blocksize) -> str:
 	deg_list = sorted(list(degrees.values()))
 
 	# 2-line: only one with 1 edge
-	if len(kernel_edges) == 1:
+	if len(kernel_edges) == 0:
+		kernel_name = "empty"
+	elif len(kernel_edges) == 1:
 		kernel_name = "2-line"
 	elif blocksize == 3:
 		# 3-line: 2 edges and 3 distinct qubits
@@ -185,9 +187,9 @@ def kernel_type(kernel_edges, blocksize) -> str:
 		# 4-line: 3 edges, degrees 1,1,2,2
 		elif len(kernel_edges) == 3:
 			if deg_list[3] == 3:
-				kernel_name == "4-star"
+				kernel_name = "4-star"
 			if deg_list[0] == deg_list[1] == 1 and deg_list[2] == deg_list[3] == 2:
-				kernel_name == "4-line"
+				kernel_name = "4-line"
 		# 4-ring: 4 edges
 		elif len(kernel_edges) == 4:
 			kernel_name = "4-ring"
