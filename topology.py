@@ -13,6 +13,7 @@ from networkx import Graph, shortest_path_length
 import networkx
 from bqskit import Circuit
 from statistics import mean
+from itertools import permutations
 
 
 def check_multi(qasm_line) -> tuple[int] | None:
@@ -196,24 +197,22 @@ def kernel_type(kernel_edges, blocksize) -> str:
 
 	return kernel_name
 
-
-def kernel_matching_score(
-	kernel_edges  : Sequence[tuple[int]],
-	logical_edges : Sequence[tuple[int]],
-) -> int:
-	"""
-	Return the matching score defined by:
-		frequency of edges in kernel - frequency of edges not in kernel
-	"""
-	in_kernel     = 0
-	not_in_kernel = 0
-	for (a,b) in logical_edges:
-		if (a,b) in kernel_edges or (b,a) in kernel_edges:
-			in_kernel += 1
-		else:
-			not_in_kernel += 1
-	return in_kernel - not_in_kernel
-
+#def kernel_matching_score(
+#	kernel_edges  : Sequence[tuple[int]],
+#	logical_edges : Sequence[tuple[int]],
+#) -> int:
+#	"""
+#	Return the matching score defined by:
+#		frequency of edges in kernel - frequency of edges not in kernel
+#	"""
+#	in_kernel     = 0
+#	not_in_kernel = 0
+#	for (a,b) in logical_edges:
+#		if (a,b) in kernel_edges or (b,a) in kernel_edges:
+#			in_kernel += 1
+#		else:
+#			not_in_kernel += 1
+#	return in_kernel - not_in_kernel
 
 
 def collect_stats(
@@ -222,7 +221,7 @@ def collect_stats(
 	block_name  : str,
 	blocksize   : int,
 	options     : dict[str, Any],
-) -> str:
+) -> Sequence:
 	"""
 	Given a circuit name/directory and a block number, determine:
 		Number of active qudits
@@ -246,7 +245,7 @@ def collect_stats(
 		len(logical_ops),
 		subcircuit.depth,
 		kernel_name,
-		kernel_matching_score(kernel, logical_ops),
+		kernel_score_function(kernel, logical_ops),
 	)
 
 
@@ -748,6 +747,128 @@ def select_mesh_kernel(
 	return edges
 
 
+def possible_mesh_kernels(
+	num_qudits : int,
+	blocksize  : int = 4,
+) -> Sequence[Sequence[tuple[int]]]:
+	"""
+	Kernels are returned in an order that biases kernel selection towards
+	what are assumed to be cheaper kernels. This means that if there is a
+	tie between a line and a ring kernel, we'd rather use the line.
+
+	Lines
+		line-cap, line-cup, line-ce, line-ec, line-ze, line-ez, line-ne, 
+		line-en, line-tx, line-bx, line-lx, line-rx
+	Rings
+		ring, bowtie, hourglass
+	Stars
+		star-tl, star-br, star-tr, star-bl
+	"""
+	if num_qudits == 2:
+		all_twos = list(permutations(range(blocksize), 2))
+		for (u,v) in all_twos:
+			if (v,u) in all_twos:
+				all_twos.remove((v,u))
+		return all_twos
+
+	elif num_qudits == 3:
+		qudits = list(range(blocksize))
+		kernels = []
+		for t in qudits:
+			choices = [q for q in qudits if q != t]
+			end_points = list(permutations(choices, 2))
+			for (u,v) in end_points:
+				if (v,u) in end_points:
+					end_points.remove((v,u))
+				kernels.append([
+					(min(t,u),max(t,u)), (min(t,v),max(t,v))
+				])
+		return kernels
+		
+	elif num_qudits == 4:
+		discon_horz = [(0,1), (2,3)]
+		discon_vert = [(0,3), (1,2)]
+		discon_x    = [(0,2), (1,3)]
+		ring      = [(0,1), (1,2), (2,3), (0,3)]
+		bowtie    = [(0,2), (0,3), (1,2), (1,3)]
+		hourglass = [(0,1), (0,2), (1,3), (2,3)]
+		star_tl = [(0,1), (0,2), (0,3)]
+		star_br = [(0,2), (1,2), (2,3)]
+		star_tr = [(0,1), (1,2), (1,3)]
+		star_bl = [(0,3), (1,3), (2,3)]
+		line_cap = [(0,1), (0,3), (1,2)]
+		line_cup = [(0,3), (1,2), (2,3)]
+		line_ce  = [(0,1), (0,3), (2,3)]
+		line_ec  = [(0,1), (1,2), (2,3)]
+		line_ze  = [(0,1), (1,3), (2,3)]
+		line_ez  = [(0,1), (0,2), (2,3)]
+		line_ne  = [(0,2), (0,3), (1,2)]
+		line_en  = [(0,3), (1,2), (1,3)]
+		line_tx  = [(0,1), (0,2), (1,3)]
+		line_bx  = [(0,2), (1,3), (2,3)]
+		line_lx  = [(0,2), (0,3), (1,3)]
+		line_rx  = [(0,2), (1,2), (1,3)]
+
+		return [
+			discon_horz, discon_vert, discon_x,
+			line_cap, line_cup, line_ce, line_ec, line_ze, line_ez, 
+			line_ne, line_en, line_tx, line_bx, line_lx, line_rx,
+			ring, bowtie, hourglass, 
+			star_tl, star_br, star_tr, star_bl,
+		]
+
+
+def match_mesh_kernel(
+	circuit_file : str, 
+	qudit_group : Sequence[int],
+	options : dict[str],
+) -> Sequence[tuple[int]]:
+	"""
+	Use a version of the "kernel method" from ML to find the most similar
+	kernel graph to the logical topology of the given circuit file. Data
+	collected show that matching the edges is the most significant predictor
+	of kernel performance.
+	"""
+	circuit = load_block_circuit(circuit_file, options)
+	logical_ops = get_logical_operations(circuit)
+
+	scores = {
+		kernel_edges: kernel_score_function(logical_ops, kernel_edges) for
+		kernel_edges in possible_mesh_kernels()
+	}
+
+	return max(scores, key=scores.get)
+
+
+def kernel_score_function(
+	logical_ops : Sequence[tuple[int]], 
+	kernel_edges : Sequence[tuple[int]],
+) -> tuple[int]:
+	"""
+	Return the "edge score" and "node score" of the kernel passed.
+	"""
+	edge_score = sum([
+		logical_ops.count((u,v)) + logical_ops.count((v,u)) 
+		for (u,v) in kernel_edges
+	])
+
+	vertices = list(set([u for (u,v) in kernel_edges] + [v for (u,v) in kernel_edges]))
+	op_occurances = [u for (u,v) in logical_ops] + [v for (u,v) in logical_ops]
+	kern_occurances = [u for (u,v) in kernel_edges] + [v for (u,v) in kernel_edges]
+
+	op_values     = {n: 0 for n in vertices}
+	kernel_values = {n: 0 for n in vertices} 
+	for v in vertices:
+		op_values[v]     = op_occurances.count(v)
+		kernel_values[v] = kern_occurances.count(v)
+	
+	node_score = 0
+	for x in vertices:
+		node_score += op_values[x] * kernel_values[x]
+
+	return (edge_score, node_score)
+
+
 def run_stats(
 	options : dict[str, Any],
 	post_stats : bool = False,
@@ -784,7 +905,8 @@ def run_stats(
 	active_qudits_list = []
 	cnots_list  = []
 	depth_list  = []
-	score_list  = []
+	edge_score_list  = []
+	node_score_list  = []
 	names = possible_kernel_names(options["blocksize"], options["topology"])
 	kernel_dict = { k:0 for k in names }
 
@@ -800,7 +922,8 @@ def run_stats(
 		active_qudits_list.append(num_active)
 		cnots_list.append(cnots)
 		depth_list.append(depth)
-		score_list.append(score)
+		edge_score_list.append(score[0])
+		node_score_list.append(score[1])
 		kernel_dict[kernel_name] += 1
 		
 	if resynthesized:
@@ -812,10 +935,12 @@ def run_stats(
 
 	string += (
 		f"Total Operations: {sum(cnots_list)}\n"
-		f"Total matching score: {sum(score_list)}\n"
+		f"Total matching edge score: {sum(edge_score_list)}\n"
+		f"Total matching node score: {sum(node_score_list)}\n"
 		f"Average CNOTs: {format(mean(cnots_list), '.3f')}\n"
 		f"Average depth: {format(mean(depth_list), '.3f')}\n"
-		f"Average score: {format(mean(score_list), '.3f')}\n"
+		f"Average edge score: {format(mean(edge_score_list), '.3f')}\n"
+		f"Average node score: {format(mean(node_score_list), '.3f')}\n"
 	)
 	if post_stats:
 		string += get_mapping_results(options)
@@ -827,6 +952,7 @@ def run_stats(
 			string += f"  {k}: {kernel_dict[k]}\n"
 		string += get_original_count(options)
 	return string
+
 
 def select_kernel(
 	circuit_file : str, 
