@@ -54,8 +54,8 @@ def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 	qiskit_map = layout.property_set['layout'].get_virtual_bits()
 	l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
 
-	# Qiskit doesn't use physical numbering in the qasm() method, so parse the qasm
-	# file and do the mapping here.
+	# Qiskit doesn't use physical numbering in the qasm() method, so parse the 
+	# qasm file and do the mapping here.
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
 			for line in in_qasm:

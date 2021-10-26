@@ -153,11 +153,33 @@ def possible_kernel_names(blocksize, top_name) -> list[str]:
 	if top_name == "linear" and blocksize == 3:
 		return ["empty", "2-line", "3-line"]
 	if top_name == "mesh" and blocksize == 4:
-		return ["empty", "2-line", "3-line", "4-line", "2-discon", "4-star", "4-ring"]
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star", 
+			"4-ring",
+		]
 	if top_name == "falcon" and blocksize == 4:
-		return ["empty", "2-line", "3-line", "4-line", "2-discon", "4-star"]
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star"
+		]
 	if top_name == "linear" and blocksize == 4:
-		return ["empty", "2-line", "3-line", "4-line", "2-discon"]
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon"
+		]
+	if top_name == "mesh" and blocksize == 5:
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star", 
+			"4-ring", "3-2-discon", "5-star", "5-tee", "5-line", "5-dipper"
+		]
+	if top_name == "falcon" and blocksize == 5:
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star"
+			"3-2-discon", "5-star", "5-line",
+		]
+	if top_name == "linear" and blocksize == 5:
+		return [
+			"empty", "2-line", "3-line", "4-line", "2-2-discon", 
+			"3-2-discon", "5-line",
+		]
 
 
 def kernel_type(kernel_edges, blocksize) -> str:
