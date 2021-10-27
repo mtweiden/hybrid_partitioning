@@ -14,7 +14,7 @@ from bqskit.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
-from topology import get_logical_operations, run_stats, select_kernel
+from topology import get_logical_operations, run_stats, match_kernel
 from util import (
 	load_circuit_structure,
 	save_block_topology,
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 						subtopology.add((i,j))
 				print(subtopology)
 			else:
-				subtopology = select_kernel(
+				subtopology = match_kernel(
 					block_path,
 					structure[block_num],
 					options

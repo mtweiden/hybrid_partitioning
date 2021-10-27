@@ -145,46 +145,34 @@ def get_direct_edges(
 	]
 
 
-def possible_kernel_names(blocksize, top_name) -> list[str]:
-	if top_name == "mesh" and blocksize == 3:
-		return ["empty", "2-line", "3-line"]
-	if top_name == "falcon" and blocksize == 3:
-		return ["empty", "2-line", "3-line"]
-	if top_name == "linear" and blocksize == 3:
-		return ["empty", "2-line", "3-line"]
-	if top_name == "mesh" and blocksize == 4:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star", 
-			"4-ring",
-		]
-	if top_name == "falcon" and blocksize == 4:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star"
-		]
-	if top_name == "linear" and blocksize == 4:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon"
-		]
-	if top_name == "mesh" and blocksize == 5:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star", 
-			"4-ring", "3-2-discon", "5-star", "5-tee", "5-line", "5-dipper"
-		]
-	if top_name == "falcon" and blocksize == 5:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon", "4-star"
-			"3-2-discon", "5-star", "5-line",
-		]
-	if top_name == "linear" and blocksize == 5:
-		return [
-			"empty", "2-line", "3-line", "4-line", "2-2-discon", 
-			"3-2-discon", "5-line",
-		]
+def possible_kernel_names(num_qudits, top_name) -> list[str]:
+	names = ["empty"]
+
+	if num_qudits >= 2:
+		names.extend(["2-line"])
+
+	if num_qudits >= 3:
+		names.extend(["2-line", "3-line"])
+
+	if top_name == "mesh" and num_qudits >= 4:
+		names.extend(["4-line", "2-2-discon", "4-star", "4-ring"])
+	elif top_name == "falcon" and num_qudits >= 4:
+		names.extend(["4-line", "2-2-discon", "4-star"])
+	elif top_name == "linear" and num_qudits >= 4:
+		names.extend(["4-line", "2-2-discon"])
+
+	if top_name == "mesh" and num_qudits >= 5:
+		names.extend(["2-3-discon", "5-star", "5-tee", "5-line", "5-dipper"])
+	elif top_name == "falcon" and num_qudits >= 5:
+		names.extend(["2-3-discon", "5-tee", "5-line"])
+	elif top_name == "linear" and num_qudits >= 5:
+		names.extend(["2-3-discon", "5-line"])
+	return names
 
 
-def kernel_type(kernel_edges, blocksize) -> str:
+def kernel_type(kernel_edges, num_qudits) -> str:
 	kernel_name = "unknown"
-	degrees = get_num_vertex_uses(kernel_edges, blocksize)
+	degrees = get_num_vertex_uses(kernel_edges, num_qudits)
 	deg_list = sorted(list(degrees.values()))
 
 	# 2-line: only one with 1 edge
@@ -192,20 +180,20 @@ def kernel_type(kernel_edges, blocksize) -> str:
 		kernel_name = "empty"
 	elif len(kernel_edges) == 1:
 		kernel_name = "2-line"
-	elif blocksize == 3:
+	elif num_qudits == 3:
 		# 3-line: 2 edges and 3 distinct qubits
 		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
 		if len(kernel_edges) == 2: 
 			if deg_list[0] == 1 and deg_list[1] == 1 and deg_list[2] == 2:
 				kernel_name = "3-line"
-	elif blocksize == 4:
+	elif num_qudits == 4:
 		# 3-line: 2 edges and 3 distinct qubits
 		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
 		if len(kernel_edges) == 2: 
 			if deg_list[0] == 0 and all([deg_list[i] > 0 for i in range(1,4)]):
 				kernel_name = "3-line"
 			if all([deg_list[i] == 1 for i in range(0,4)]):
-				kernel_name = "2-discon"
+				kernel_name = "2-2-discon"
 		# 4-star: 3 edges, one vertex with degree 3
 		# 4-line: 3 edges, degrees 1,1,2,2
 		elif len(kernel_edges) == 3:
@@ -216,6 +204,21 @@ def kernel_type(kernel_edges, blocksize) -> str:
 		# 4-ring: 4 edges
 		elif len(kernel_edges) == 4:
 			kernel_name = "4-ring"
+	elif num_qudits == 5:
+		# 2-3-discon
+		if len(kernel_edges) == 3:
+			kernel_name = "2-3-discon"
+		# 5-line, 5-tee, 5-star
+		elif len(kernel_edges) == 4:
+			if max(deg_list) == 4:
+				kernel_name = "5-star"
+			elif max(deg_list) == 3:
+				kernel_name = "5-tee"
+			else:
+				kernel_name = "5-line"
+		# 5-dipper
+		elif len(kernel_edges) == 5:
+			kernel_name = "5-dipper"
 
 	return kernel_name
 
@@ -260,7 +263,7 @@ def collect_stats(
 
 	active_qudits = subcircuit.active_qudits
 	logical_ops = get_logical_operations(subcircuit, qudit_group)
-	kernel_name = kernel_type(kernel, blocksize)
+	kernel_name = kernel_type(kernel, len(qudit_group))
 
 	return (
 		len(active_qudits), 
@@ -334,450 +337,27 @@ def best_star_kernel(vertex_uses) -> Sequence[tuple[int]]:
 	return [(q[1],q[0]), (q[2],q[0]), (q[3],q[0])]
 
 
-def select_linear_kernel(
+def construct_permuted_kernel(
+	edge_list    : Sequence[tuple[int]],
+	vertex_order : Sequence[int],
+) -> Sequence[tuple[int]]:
+	"""
+	Helper for getting all permutations of a kernel type.
+	"""
+	return [
+		(
+			min(vertex_order[u], vertex_order[v]), 
+			max(vertex_order[u], vertex_order[v])
+		) for (u,v) in edge_list
+	]
+
+
+def match_kernel(
 	circuit_file : str, 
 	qudit_group : Sequence[int],
 	options : dict[str],
-) -> Sequence[tuple[int]]:
-	if "blocksize" not in options:
-		raise ValueError("The `blocksize` entry in	`options` is required.")
-	elif options["blocksize"] > 5:
-		raise RuntimeError(
-			"Only blocksizes up to 5 are currently supported."
-		)
-
-	# Convert the physical topology to a networkx graph
-	circuit = load_block_circuit(circuit_file, options)
-	logical_ops = get_logical_operations(circuit)
-	op_set = set(logical_ops)
-	freqs = get_frequencies(circuit)
-
-	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
-
-	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
-
-	edges = []
-	# TODO: Generalize kernel selection for blocksizes > 4
-	# Handle the case where there are no multi-qubit gates
-	while len(ranked_ops) > 0:
-		edges.append(ranked_ops.pop(0))	
-		# 1 edge cases:
-		#	K_2
-		# 2 edges cases:
-		#	2 disconnected K_2 graphs
-		#	3-line
-		if len(edges) <= 2:
-			continue
-		# 3 edges cases:
-		#	K_3 (revert)
-		#		degrees - 2, 2, 2, 0, 0
-		#	4-star (pick new edge)
-		#		degrees - 3, 1, 1, 1, 0
-		#	4-line
-		#		degrees - 2, 2, 1, 1, 0
-		#	Disconnected K_2 and 3-line
-		#		degrees - 2, 1, 1, 1, 1
-		elif len(edges) == 3:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if (
-				d[0] == 2 and d[1] == 2 and d[2] == 2
-			) or options["blocksize"] > 3 and (
-				d[0] == 3 and d[1] == 1 and d[2] == 1 and d[3] == 1
-			):
-				removed_edge = edges.pop(-1)
-				# If no more edges to choose from, connect the node to one of
-				# the end nodes
-				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 3 \
-					else removed_edge[1]
-				new_node = removed_edge[0] if center != removed_edge[0] \
-					else removed_edge[1]
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1 and i != new_node:
-						break
-				new_edge = (min(new_node, i), max(new_node, i))
-				edges.append(new_edge)
-			continue
-		# 4 edges cases:
-		#	4-dipper (revert)
-		#		degrees - 3, 2, 2, 1, 0
-		#	4-ring (revert)
-		#		degrees - 2, 2, 2, 2, 0
-		#	disconnected K_2 and K_3 (revert)
-		#		degrees - 2, 2, 2, 1, 1
-		#	5-tee (pick new edge)
-		#		degrees - 3, 2, 1, 1, 1
-		#	5-line
-		#		degrees - 2, 2, 2, 1, 1
-		elif len(edges) == 4:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if options["blocksize"] < 5 and (
-				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
-			) or (
-				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 2
-			):
-				edges.pop(-1)
-			elif options["blocksize"] > 4 and (
-				d[0] == 3 and d[1] == 2 and d[2] == 1 and d[3] == 1 and d[4] == 1
-			):
-				removed_edge = edges.pop(-1)
-				# If no more edges to choose from, connect the node to an end node
-				# preferably the one closest to the center node
-				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 3 \
-					else removed_edge[1]
-				new_node = removed_edge[0] if center != removed_edge[0] \
-					else removed_edge[1]
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1 and i != new_node:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[j] == 1 and j != new_node and j != i:
-						break
-				# Find the end node closest to the center node
-				if (i, center) or (center, i) in edges:
-					new_edge = (min(new_node, i), max(new_node, i))
-				else:
-					new_edge = (min(new_node, j), max(new_node, j))
-				edges.append(new_edge)
-
-			elif options["blocksize"] > 4 and (
-				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			):
-				# If the degree 1 nodes are adjacent, revert
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[j] == 1 and i != j:
-						break
-				if (i,j) in edges or (j,i) in edges:
-					edges.pop(-1)
-			continue
-		# 5 edges cases:
-		# Only blocksize 5 is supported
-		elif len(edges) > 4:
-			edges.pop(-1)
-
-	return edges
-
-
-def select_falcon_kernel(
-	circuit_file : str, 
-	qudit_group : Sequence[int],
-	options : dict[str],
-) -> Sequence[tuple[int]]:
-	"""
-	Given a qasm file and a physical topology, produce a hybrid topology where
-	logical edges are added for unperformable gates.
-
-	Args:
-		circuit_file (str): Path to the file specifying the circuit block.
-
-		qudit_group (Sequence[int]): Only qudit_group members will be used as
-			end points of logical edges.
-
-		options (dict[str]): 
-			blocksize (int): Defines the size of qudit groups
-			is_qasm (bool): Whether the circuit_file is qasm or pickle.
-			kernel_dir (str): Directory in which the kernel files are stored.
-
-	Returns:
-		kernel_edge_set (set[tuple[int]]): Edges to be used for synthesis.
-	
-	Raises:
-		ValueError: If `blocksize` key is not in `options`.
-	"""
-	if "blocksize" not in options:
-		raise ValueError("The `blocksize` entry in	`options` is required.")
-	elif options["blocksize"] > 5:
-		raise RuntimeError(
-			"Only blocksizes up to 5 are currently supported."
-		)
-
-	# Convert the physical topology to a networkx graph
-	circuit = load_block_circuit(circuit_file, options)
-	logical_ops = get_logical_operations(circuit)
-	op_set = set(logical_ops)
-	freqs = get_frequencies(circuit)
-
-	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
-
-	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
-
-	edges = []
-	# TODO: Generalize kernel selection for blocksizes > 4
-	# Handle the case where there are no multi-qubit gates
-	while len(ranked_ops) > 0:
-		edges.append(ranked_ops.pop(0))	
-		# 1 edge cases:
-		#	K_2
-		# 2 edges cases:
-		#	2 disconnected K_2 graphs
-		#	3-line
-		if len(edges) <= 2:
-			continue
-		# 3 edges cases:
-		#	K_3 (revert)
-		#		degrees - 2, 2, 2, 0, 0
-		#	4-star
-		#		degrees - 3, 1, 1, 1, 0
-		#	4-line
-		#		degrees - 2, 2, 1, 1, 0
-		#	Disconnected K_2 and 3-line
-		#		degrees - 2, 1, 1, 1, 1
-		elif len(edges) == 3:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if (
-				d[0] == 2 and d[1] == 2 and d[2] == 2
-			):
-				edges.pop(-1)
-			continue
-		# 4 edges cases:
-		#	4-dipper (revert)
-		#		degrees - 3, 2, 2, 1, 0
-		#	4-ring (revert)
-		#		degrees - 2, 2, 2, 2, 0
-		#	disconnected K_2 and K_3 (revert)
-		#		degrees - 2, 2, 2, 1, 1
-		#	5-star (pick new edge)
-		#		degrees - 4, 1, 1, 1, 1
-		#	5-tee
-		#		degrees - 3, 2, 1, 1, 1
-		#	5-line
-		#		degrees - 2, 2, 2, 1, 1
-		elif len(edges) == 4:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if (
-				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
-			):
-				edges.pop(-1)
-			elif options["blocksize"] > 4 and(
-				d[0] == 4 and d[1] == 1 and d[2] == 1 and d[3] == 1 and d[4] == 1
-			):
-				removed_edge = edges.pop(-1)
-				# If no more edges to choose from, connect the node to an end node
-				# preferably the one closest to the center node
-				center = removed_edge[0] if vertex_degrees[removed_edge[0]] == 4 \
-					else removed_edge[1]
-				new_node = removed_edge[0] if center != removed_edge[0] \
-					else removed_edge[1]
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1 and i != new_node:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[j] == 1 and j != new_node and j != i:
-						break
-				for k in vertex_degrees.keys():
-					if vertex_degrees[k] == 1 and k != new_node and k != i and k!= j:
-						break
-				new_edge_i = (min(i, new_node), max(i, new_node))
-				new_edge_j = (min(j, new_node), max(j, new_node))
-				new_edge_k = (min(k, new_node), max(k, new_node))
-				if new_edge_i in ranked_ops:
-					edges.append(new_edge_i)
-				elif new_edge_j in ranked_ops:
-					edges.append(new_edge_j)
-				elif new_edge_k in ranked_ops:
-					edges.append(new_edge_k)
-				else:
-					edges.append(new_edge_i)
-				
-				# Find the end node closest to the center node
-				if (i, center) or (center, i) in edges:
-					new_edge = (min(new_node, i), max(new_node, i))
-				else:
-					new_edge = (min(new_node, j), max(new_node, j))
-				edges.append(new_edge)
-			elif options["blocksize"] > 4 and (
-				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			):
-				# If the degree 1 nodes are adjacent, revert
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[j] == 1 and i != j:
-						break
-				if (i,j) in edges or (j,i) in edges:
-					edges.pop(-1)
-			continue
-		# 5 edges cases:
-		# Only blocksize 5 is supported
-		elif len(edges) > 4:
-			edges.pop(-1)
-
-	return edges
-
-
-def select_mesh_kernel(
-	circuit_file : str, 
-	qudit_group : Sequence[int],
-	options : dict[str],
-) -> Sequence[tuple[int]]:
-	"""
-	Given a qasm file and a physical topology, produce a hybrid topology where
-	logical edges are added for unperformable gates.
-
-	Args:
-		circuit_file (str): Path to the file specifying the circuit block.
-
-		qudit_group (Sequence[int]): Only qudit_group members will be used as
-			end points of logical edges.
-
-		options (dict[str]): 
-			blocksize (int): Defines the size of qudit groups
-			is_qasm (bool): Whether the circuit_file is qasm or pickle.
-			kernel_dir (str): Directory in which the kernel files are stored.
-
-	Returns:
-		kernel_edge_set (set[tuple[int]]): Edges to be used for synthesis.
-	
-	Raises:
-		ValueError: If `blocksize` key is not in `options`.
-	"""
-	if "blocksize" not in options:
-		raise ValueError("The `blocksize` entry in	`options` is required.")
-	elif options["blocksize"] > 5:
-		raise RuntimeError(
-			"Only blocksizes up to 5 are currently supported."
-		)
-
-	# Convert the physical topology to a networkx graph
-	circuit = load_block_circuit(circuit_file, options)
-	logical_ops = get_logical_operations(circuit)
-	op_set = set(logical_ops)
-	freqs = get_frequencies(circuit)
-
-	ranked_ops = sorted(list(op_set), key=lambda x: freqs[x], reverse=True)
-
-	vertex_degrees = get_num_vertex_uses(op_set, len(qudit_group))
-
-	edges = []
-	# TODO: Generalize kernel selection for blocksizes > 4
-	# Handle the case where there are no multi-qubit gates
-	while len(ranked_ops) > 0:
-		edges.append(ranked_ops.pop(0))	
-		# 1 edge cases:
-		#	K_2
-		# 2 edges cases:
-		#	2 disconnected K_2 graphs
-		#	3-line
-		if len(edges) <= 2:
-			continue
-		# 3 edges cases:
-		#	K_3 (revert)
-		#		degrees - 2, 2, 2, 0, 0
-		#	4-star
-		#		degrees - 3, 1, 1, 1, 0
-		#	4-line
-		#		degrees - 2, 2, 1, 1, 0
-		#	Disconnected K_2 and 3-line
-		#		degrees - 2, 1, 1, 1, 1
-		elif len(edges) == 3:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if (
-				d[0] == 2 and d[1] == 2 and d[2] == 2
-			):
-				edges.pop(-1)
-			continue
-		# 4 edges cases:
-		#	4-dipper (revert)
-		#		degrees - 3, 2, 2, 1, 0
-		#	4-ring
-		#		degrees - 2, 2, 2, 2, 0
-		#	disconnected K_2 and K_3 (revert)
-		#		degrees - 2, 2, 2, 1, 1
-		#	5-star
-		#		degrees - 4, 1, 1, 1, 1
-		#	5-tee
-		#		degrees - 3, 2, 1, 1, 1
-		#	5-line
-		#		degrees - 2, 2, 2, 1, 1
-		elif len(edges) == 4:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if (
-				d[0] == 3 and d[1] == 2 and d[2] == 2 and d[3] == 1
-			):
-				edges.pop(-1)
-			elif options["blocksize"] > 4 and (
-				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			):
-				# If the degree 1 nodes are adjacent, revert
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[j] == 1 and i != j:
-						break
-				if (i,j) in edges or (j,i) in edges:
-					edges.pop(-1)
-			continue
-		# 5 edges cases:
-		#	4-ring with bridge (revert)
-		#		degrees - 3, 3, 2, 2, 0
-		#	5-star plus extra edge (revert)
-		#		degrees - 4, 2, 2, 1, 1
-		#	K_3 with 2 branches (revert)
-		#		degrees - 3, 3, 2, 1, 1
-		#	5-ring (revert)
-		#		degrees - 2, 2, 2, 2, 2
-		#	4-dipper with long handle (revert)
-		#		degrees - 3, 2, 2, 2, 1
-		#		Check for embedded K_3 to distinguish from 5 dipper
-		#	5-dipper
-		#		degrees - 3, 2, 2, 2, 1
-		elif len(edges) == 5:
-			vertex_degrees = get_num_vertex_uses(edges, options["blocksize"])
-			d = sorted(list(vertex_degrees.values()), reverse=True)
-			if options["blocksize"] <= 4 and (
-				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 2
-			):
-				edges.pop(-1)
-			elif options["blocksize"] > 4 and ((
-				d[0] == 4 and d[1] == 2 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			) or (
-				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			) or (
-				d[0] == 2 and d[1] == 2 and d[2] == 2 and d[3] == 2 and d[4] == 2
-			) or (
-				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 2 and d[4] == 0
-			)):
-				edges.pop(-1)
-			elif (
-				d[0] == 3 and d[1] == 3 and d[2] == 2 and d[3] == 1 and d[4] == 1
-			):
-				# Check to see if the degree 1 vertex is adjacent to the degree 3
-				# vertex. If not, pop edge, K_3 embedded
-				for i in vertex_degrees.keys():
-					if vertex_degrees[i] == 1:
-						break
-				for j in vertex_degrees.keys():
-					if vertex_degrees[3] == 3:
-						break
-				if (i,j) in edges or (j,i) in edges:
-					edges.pop(-1)
-			continue
-		# Only blocksize 5 is supported
-		elif len(edges) > 5:
-			edges.pop(-1)
-
-	return edges
-
-
-def possible_mesh_kernels(
-	num_qudits : int,
-	blocksize  : int = 4,
 ) -> Sequence[Sequence[tuple[int]]]:
 	"""
-	Kernels are returned in an order that biases kernel selection towards
-	what are assumed to be cheaper kernels. This means that if there is a
-	tie between a line and a ring kernel, we'd rather use the line.
-
 	Lines
 		line-cap, line-cup, line-ce, line-ec, line-ze, line-ez, line-ne, 
 		line-en, line-tx, line-bx, line-lx, line-rx
@@ -786,80 +366,92 @@ def possible_mesh_kernels(
 	Stars
 		star-tl, star-br, star-tr, star-bl
 	"""
-	if num_qudits == 2:
-		all_twos = list(permutations(range(blocksize), 2))
-		for (u,v) in all_twos:
-			if (v,u) in all_twos:
-				all_twos.remove((v,u))
-		return all_twos
+	if options["blocksize"] > 5:
+		raise RuntimeError(
+			"Only blocksizes up to 5 are currently supported."
+		)
 
-	elif num_qudits == 3:
-		qudits = list(range(blocksize))
-		kernels = []
-		for t in qudits:
-			choices = [q for q in qudits if q != t]
-			end_points = list(permutations(choices, 2))
-			for (u,v) in end_points:
-				if (v,u) in end_points:
-					end_points.remove((v,u))
-				kernels.append([
-					(min(t,u),max(t,u)), (min(t,v),max(t,v))
-				])
-		return kernels
-		
-	elif num_qudits == 4:
-		discon_horz = [(0,1), (2,3)]
-		discon_vert = [(0,3), (1,2)]
-		discon_x    = [(0,2), (1,3)]
-		ring      = [(0,1), (1,2), (2,3), (0,3)]
-		bowtie    = [(0,2), (0,3), (1,2), (1,3)]
-		hourglass = [(0,1), (0,2), (1,3), (2,3)]
-		star_tl = [(0,1), (0,2), (0,3)]
-		star_br = [(0,2), (1,2), (2,3)]
-		star_tr = [(0,1), (1,2), (1,3)]
-		star_bl = [(0,3), (1,3), (2,3)]
-		line_cap = [(0,1), (0,3), (1,2)]
-		line_cup = [(0,3), (1,2), (2,3)]
-		line_ce  = [(0,1), (0,3), (2,3)]
-		line_ec  = [(0,1), (1,2), (2,3)]
-		line_ze  = [(0,1), (1,3), (2,3)]
-		line_ez  = [(0,1), (0,2), (2,3)]
-		line_ne  = [(0,2), (0,3), (1,2)]
-		line_en  = [(0,3), (1,2), (1,3)]
-		line_tx  = [(0,1), (0,2), (1,3)]
-		line_bx  = [(0,2), (1,3), (2,3)]
-		line_lx  = [(0,2), (0,3), (1,3)]
-		line_rx  = [(0,2), (1,2), (1,3)]
-
-		return [
-			discon_horz, discon_vert, discon_x,
-			line_cap, line_cup, line_ce, line_ec, line_ze, line_ez, 
-			line_ne, line_en, line_tx, line_bx, line_lx, line_rx,
-			ring, bowtie, hourglass, 
-			star_tl, star_br, star_tr, star_bl,
-		]
-
-
-def match_mesh_kernel(
-	circuit_file : str, 
-	qudit_group : Sequence[int],
-	options : dict[str],
-) -> Sequence[tuple[int]]:
-	"""
-	Use a version of the "kernel method" from ML to find the most similar
-	kernel graph to the logical topology of the given circuit file. Data
-	collected show that matching the edges is the most significant predictor
-	of kernel performance.
-	"""
 	circuit = load_block_circuit(circuit_file, options)
 	logical_ops = get_logical_operations(circuit)
+	num_qudits = len(qudit_group)
 
-	scores = {
-		kernel_edges: kernel_score_function(logical_ops, kernel_edges) for
-		kernel_edges in possible_mesh_kernels()
-	}
+	# handle the only 1-qubit gates case to avoid trying all options
+	if len(logical_ops) == 0:
+		return []
 
-	return max(scores, key=scores.get)
+	if num_qudits == 2:
+		# 2-line
+		templates = [
+			[(0,1)],
+		]
+
+	elif num_qudits == 3:
+		# 3-line
+		templates = [
+			[(0,1), (1,2)],
+		]
+		
+	elif num_qudits == 4:
+		# 2-2-discon, 4-line, 4-ring, 4-star
+		if options['topology'] == "mesh":
+			templates = [
+				[(0,1), (2,3)],
+				[(0,1), (1,2), (2,3)], 
+				[(0,1), (1,2), (2,3), (0,3)],
+				[(0,1), (0,2), (0,3)],
+			]
+		# 2-2-discon, 4-line, 4-star
+		elif options['topology'] == "falcon":
+			templates = [
+				[(0,1), (2,3)],
+				[(0,1), (1,2), (2,3)], 
+				[(0,1), (0,2), (0,3)],
+			]
+		# 2-2-discon, 4-line, 4-star
+		elif options['topology'] == "linear":
+			templates = [
+				[(0,1), (2,3)],
+				[(0,1), (1,2), (2,3)], 
+			]
+
+	elif num_qudits == 5:
+		# 2-3-discon, 5-line, 5-tee, 5-dipper, 5-star
+		if options['topology'] == "mesh":
+			templates = [
+				[(0,1), (2,3), (3,4)],
+				[(0,1), (1,2), (2,3), (3,4)],
+				[(0,1), (1,2), (1,3), (3,4)],
+				[(0,1), (1,2), (2,3), (0,3), (0,4)],
+				[(0,1), (0,2), (0,3), (0,4)],
+			]
+		# 2-3-discon, 5-line, 5-tee
+		elif options['topology'] == "falcon":
+			templates = [
+				[(0,1), (2,3), (3,4)],
+				[(0,1), (1,2), (2,3), (3,4)],
+				[(0,1), (1,2), (1,3), (3,4)],
+			]
+		# 2-3-discon, 5-line
+		elif options['topology'] == "linear":
+			templates = [
+				[(0,1), (2,3), (3,4)],
+				[(0,1), (1,2), (2,3), (3,4)],
+			]
+
+	vertex_list  = list(range(num_qudits))
+	vertex_perms = list(permutations(vertex_list, num_qudits))
+	best_kernel = []
+	best_score  = 0
+	for template in templates:
+		for perm in vertex_perms:
+			permuted_kernel = construct_permuted_kernel(template, perm)
+			edge_score, node_score = kernel_score_function(logical_ops, permuted_kernel)
+			#if edge_score + node_score > best_score:
+			if edge_score > best_score:
+				best_kernel = permuted_kernel
+				best_score = edge_score
+
+	return best_kernel
 
 
 def kernel_score_function(
@@ -889,6 +481,32 @@ def kernel_score_function(
 		node_score += op_values[x] * kernel_values[x]
 
 	return (edge_score, node_score)
+
+
+def edge_score_function(
+	logical_ops  : Sequence[tuple[int]], 
+	kernel_edges : Sequence[tuple[int]],
+) -> tuple[int]:
+	"""
+	Return the "edge score" of the passed kernel. The edge score appears to be
+	a better predictor of average and minimum cnot and depth for partitions.
+
+	Arguments:
+		logical_ops (Sequence[tuple[int]]): List of edges that appear in the 
+			partition where edge counts correspond to the number of operations
+			of that kind in the partition.
+
+		kernel_edges (Sequence[tuple[int]]): Edges in the kernel graph.
+
+	Returns:
+		score (int): inner product between logical ops edge frequency vector
+			and the kernel_edges indicator vector.
+	"""
+	score = 0
+	for (u,v) in kernel_edges:
+		score += logical_ops.count((u,v))
+		score += logical_ops.count((v,u))
+	return score
 
 
 def run_stats(
@@ -974,16 +592,3 @@ def run_stats(
 			string += f"  {k}: {kernel_dict[k]}\n"
 		string += get_original_count(options)
 	return string
-
-
-def select_kernel(
-	circuit_file : str, 
-	qudit_group : Sequence[int],
-	options : dict[str],
-) -> Graph | None:
-	if options["topology"] == "mesh":
-		return select_mesh_kernel(circuit_file, qudit_group, options)
-	elif options["topology"] == "falcon":
-		return select_falcon_kernel(circuit_file, qudit_group, options)
-	else:
-		return select_linear_kernel(circuit_file, qudit_group, options)

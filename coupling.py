@@ -138,9 +138,11 @@ if __name__ == "__main__":
     get_coupling_map("mesh", 16, True)
     get_coupling_map("mesh", 25, True)
     get_coupling_map("mesh", 36, True)
+    get_coupling_map("mesh", 49, True)
     get_coupling_map("mesh", 64, True)
+    get_coupling_map("mesh", 81, True)
+    get_coupling_map("mesh", 100, True)
     get_coupling_map("mesh", 121, True)
-    get_coupling_map("mesh", 128, True)
 
     get_coupling_map("linear", 5, True)
     get_coupling_map("linear", 9, True)
@@ -157,6 +159,7 @@ if __name__ == "__main__":
     get_coupling_map("linear", 50, True)
     get_coupling_map("linear", 64, True)
     get_coupling_map("linear", 100, True)
+    get_coupling_map("linear", 101, True)
     get_coupling_map("linear", 128, True)
 
     # Falcons
@@ -172,7 +175,7 @@ if __name__ == "__main__":
     with open("coupling_maps/falcon_16", "wb") as f:
         dump(falcon16, f)
 
-    # 27
+    # 270
     falcon27 = set([
         (6,7), (17,18),
         (0,1), (1,4), (4,7), (7,10), (10,12), (12,15), (15,18), (18,21), (21,23),
