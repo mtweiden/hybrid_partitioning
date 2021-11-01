@@ -8,6 +8,8 @@ from posix import listdir
 from typing import Any, Dict, Sequence, Tuple
 from re import match, findall
 
+from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
+
 from util import get_mapping_results, get_original_count, get_remapping_results, load_block_circuit, load_block_topology
 from networkx import Graph, shortest_path_length
 import networkx
@@ -221,23 +223,6 @@ def kernel_type(kernel_edges, num_qudits) -> str:
 			kernel_name = "5-dipper"
 
 	return kernel_name
-
-#def kernel_matching_score(
-#	kernel_edges  : Sequence[tuple[int]],
-#	logical_edges : Sequence[tuple[int]],
-#) -> int:
-#	"""
-#	Return the matching score defined by:
-#		frequency of edges in kernel - frequency of edges not in kernel
-#	"""
-#	in_kernel     = 0
-#	not_in_kernel = 0
-#	for (a,b) in logical_edges:
-#		if (a,b) in kernel_edges or (b,a) in kernel_edges:
-#			in_kernel += 1
-#		else:
-#			not_in_kernel += 1
-#	return in_kernel - not_in_kernel
 
 
 def collect_stats(
@@ -579,7 +564,7 @@ def run_stats(
 		string = "PRE-\n"
 
 	string += (
-		f"Total Operations: {sum(cnots_list)}\n"
+		f"Total CNOTs: {sum(cnots_list)}\n"
 		f"Total matching edge score: {sum(edge_score_list)}\n"
 		f"Total matching node score: {sum(node_score_list)}\n"
 		f"Average CNOTs: {format(mean(cnots_list), '.3f')}\n"

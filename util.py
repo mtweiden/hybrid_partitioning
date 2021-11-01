@@ -204,7 +204,12 @@ def get_mapping_results(
 				cnots += 1
 			elif match("swap", line):
 				swaps += 1
-	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+	with open(path, "r") as f:
+		depth = OPENQASM2Language().decode(f.read()).num_cycles
+	return (
+		f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+		f"Circuit depth: {depth}\n"
+	)
 
 
 def get_remapping_results(
@@ -219,7 +224,12 @@ def get_remapping_results(
 				cnots += 1
 			elif match("swap", line):
 				swaps += 1
-	return f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+	with open(path, "r") as f:
+		depth = OPENQASM2Language().decode(f.read()).num_cycles
+	return (
+		f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
+		f"Circuit depth: {depth}\n"
+	)
 
 
 def get_original_count(
@@ -231,7 +241,11 @@ def get_original_count(
 		for line in qasmfile:
 			if match("cx", line):
 				cnots += 1
-	return f"Original CNOTs: {cnots}\n"
+	with open(path, "r") as f:
+		depth = OPENQASM2Language().decode(f.read()).num_cycles
+	return (
+		f"Original CNOTs: {cnots}\nOriginal depth: {depth}\n"
+	)
 
 
 def rewrite_block(
