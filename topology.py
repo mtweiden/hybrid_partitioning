@@ -548,7 +548,8 @@ def run_stats(
 	edge_score_list  = []
 	node_score_list  = []
 	names = possible_kernel_names(options["blocksize"], options["topology"])
-	kernel_dict = { k:0 for k in names }
+	kernel_dict = {k:0 for k in names}
+	kernel_coverage = {k:0 for k in names}
 
 	# Run collect_stats on each block
 	for block_num in range(len(block_files)):
@@ -565,6 +566,10 @@ def run_stats(
 		edge_score_list.append(score[0])
 		node_score_list.append(score[1])
 		kernel_dict[kernel_name] += 1
+		kernel_coverage[kernel_name] += cnots
+	total_cnots = sum(cnots_list)
+	for name in names:
+		kernel_coverage[name] /= total_cnots
 		
 	if resynthesized:
 		string = "REPLACE-\n"
@@ -589,6 +594,7 @@ def run_stats(
 	else:
 		string += f"Kernel counts:\n"
 		for k in sorted(list(kernel_dict.keys())):
-			string += f"  {k}: {kernel_dict[k]}\n"
+			coverage = format(kernel_coverage[k] * 100, '.1f')
+			string += f"  {k}: {kernel_dict[k]} ({coverage}%)\n"
 		string += get_original_count(options)
 	return string
