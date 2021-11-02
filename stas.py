@@ -168,7 +168,7 @@ if __name__ == '__main__':
 	else:
 		structure = load_circuit_structure(options["partition_dir"])
 		for block_num in range(len(block_files)):
-			print(f"  Analyzing {block_names[block_num]}...")
+			print(f"  Analyzing {block_names[block_num]} ({structure[block_num]})...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
 			
 			if args.alltoall:
