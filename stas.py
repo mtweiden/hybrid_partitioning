@@ -14,7 +14,7 @@ from bqskit.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
-from topology import get_logical_operations, run_stats, match_kernel
+from topology import get_logical_operations, kernel_type, run_stats, match_kernel
 from util import (
 	load_circuit_structure,
 	save_block_topology,
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 	else:
 		structure = load_circuit_structure(options["partition_dir"])
 		for block_num in range(len(block_files)):
-			print(f"  Analyzing {block_names[block_num]} ({structure[block_num]})...")
+			print(f"  Analyzing {block_names[block_num]}...")
 			block_path = f"{options['partition_dir']}/{block_files[block_num]}"
 			
 			if args.alltoall:
@@ -189,6 +189,11 @@ if __name__ == '__main__':
 			)
 			# Saving the edge list
 			save_block_topology(subtopology, subtopology_path)
+			print(
+				f"    Group: {structure[block_num]}\n"
+				f"    Kernel: {kernel_type(subtopology, len(structure[block_num]))}"
+				f" - {subtopology}\n"
+			)
 
 		summary = get_summary(options, block_files)
 		with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
