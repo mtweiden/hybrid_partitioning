@@ -4,15 +4,15 @@ from re import S, match
 from typing import Any, Sequence
 import pickle
 import argparse
+from bqskit.ir.operation import Operation
 
 from qiskit import circuit
 
 from networkx.classes.graph import Graph
 from math import sqrt, ceil
 from bqskit import Circuit
-from bqskit.ir.gates.circuitgate import CircuitGate
 from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
-from bqskit.ir.region import CircuitRegion
+from bqskit.passes.util.converttocnot import ToCNOTPass
 
 from mapping import find_num_qudits
 
@@ -205,10 +205,13 @@ def get_mapping_results(
 			elif match("swap", line):
 				swaps += 1
 	with open(path, "r") as f:
-		depth = OPENQASM2Language().decode(f.read()).num_cycles
+		circ = OPENQASM2Language().decode(f.read())
+		ToCNOTPass().run(circ)
+		depth = circ.num_cycles
+		parallelism = circ.parallelism
 	return (
 		f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
-		f"Circuit depth: {depth}\n"
+		f"Circuit depth: {depth}\nParallelism: {parallelism}\n"
 	)
 
 
@@ -225,10 +228,13 @@ def get_remapping_results(
 			elif match("swap", line):
 				swaps += 1
 	with open(path, "r") as f:
-		depth = OPENQASM2Language().decode(f.read()).num_cycles
+		circ = OPENQASM2Language().decode(f.read())
+		ToCNOTPass().run(circ)
+		depth = circ.num_cycles
+		parallelism = circ.parallelism
 	return (
 		f"Synthesized CNOTs: {cnots}\nSWAPs from routing: {swaps}\n"
-		f"Circuit depth: {depth}\n"
+		f"Circuit depth: {depth}\nParallelism: {parallelism}\n"
 	)
 
 
@@ -242,9 +248,13 @@ def get_original_count(
 			if match("cx", line):
 				cnots += 1
 	with open(path, "r") as f:
-		depth = OPENQASM2Language().decode(f.read()).num_cycles
+		circ = OPENQASM2Language().decode(f.read())
+		ToCNOTPass().run(circ)
+		depth = circ.num_cycles
+		parallelism = circ.parallelism
 	return (
 		f"Original CNOTs: {cnots}\nOriginal depth: {depth}\n"
+		f"Parallelism: {parallelism}\n"
 	)
 
 
