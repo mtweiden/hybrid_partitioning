@@ -154,7 +154,11 @@ def replace_blocks(
 						f"  Using routed version of block {block_num} "
 						f"({routed_count/synthesized_count}x smaller)"
 					)
-					f.write(routed_qasm)
+					# Use original qasm, not the routed qasm. Using the routed
+					# qasm keeps in the extra SWAPs
+					with open(input_qasm_file, "r") as ff:
+						original_qasm = ff.read()
+					f.write(original_qasm)
 	
 	if reroute_flag:
 		# Recreate new synthesized qasm file
