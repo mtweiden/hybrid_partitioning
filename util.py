@@ -195,7 +195,7 @@ def get_summary(
 def get_mapping_results(
 	options : dict[str, Any],
 ) -> str:
-	path = options["mapped_qasm_file"]
+	path = options["synthesized_qasm_file"]
 	cnots = 0
 	swaps = 0
 	with open(path, "r") as qasmfile:
@@ -243,18 +243,21 @@ def get_original_count(
 ) -> str:
 	path = options["original_qasm_file"]
 	cnots = 0
+	swaps = 0
 	with open(path, "r") as qasmfile:
 		for line in qasmfile:
 			if match("cx", line):
 				cnots += 1
+			elif match("swap", line):
+				swaps += 1
 	with open(path, "r") as f:
 		circ = OPENQASM2Language().decode(f.read())
 		ToCNOTPass().run(circ)
 		depth = circ.num_cycles
 		parallelism = circ.parallelism
 	return (
-		f"Original CNOTs: {cnots}\nOriginal depth: {depth}\n"
-		f"Parallelism: {parallelism}\n"
+		f"Original CNOTs: {cnots}\nOriginal SWAPs: {swaps}\n"
+		f"Original depth: {depth}\nParallelism: {parallelism}\n"
 	)
 
 

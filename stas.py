@@ -73,39 +73,10 @@ if __name__ == '__main__':
 	if not exists(options["synthesis_dir"]):
 		mkdir(options["synthesis_dir"])
 
-	# Layout
-	#region layout
-	print("="*80)
-	print(f"Doing layout for {options['target_name']}...")
-	print("="*80) 
-	if exists(options["layout_qasm_file"]):
-		print("Found existing file for %s, skipping layout" 
-			%(options["layout_qasm_file"]))
-	else:
-		if args.layout == "sabre":
-			do_layout(
-				args.qasm_file, 
-				options["coupling_map"], 
-				options["layout_qasm_file"],
-			)
-		elif args.layout == "random": 
-			random_layout(
-				args.qasm_file,
-				options["coupling_map"], 
-				options["layout_qasm_file"],
-			)
-		else:
-			dummy_layout(
-				args.qasm_file, 
-				options["coupling_map"], 
-				options["layout_qasm_file"],
-			)
-	#endregion
-
 	# Partitioning on logical topology
 	#region partitioning
 	print("="*80)
-	print(f"Doing logical partitioning on {options['target_name']}...")
+	print(f"Doing partitioning on {options['target_name']}...")
 	print("="*80)
 	if exists(f"{options['partition_dir']}/structure.pickle"):
 		print(
@@ -114,7 +85,7 @@ if __name__ == '__main__':
 		)
 	else:
 		#with open(options["original_qasm_file"], 'r') as f:
-		with open(options["layout_qasm_file"], 'r') as f:
+		with open(options["original_qasm_file"], 'r') as f:
 			circuit = OPENQASM2Language().decode(f.read())
 		
 		if options["partitioner"] == "greedy":
@@ -243,50 +214,6 @@ if __name__ == '__main__':
 			f.write(OPENQASM2Language().encode(synthesized_circuit))
 		#endregion
 
-		# Relayout
-		#region relayout
-		print("="*80)
-		print(f"Doing Relayout for {options['synthesized_qasm_file']}...")
-		print("="*80)
-		if exists(options["relayout_qasm_file"]):
-			print(
-				f"Found existing file for {options['relayout_qasm_file']}, "
-				"skipping relayout" 
-			)
-		else:
-			do_layout(
-				options["synthesized_qasm_file"],
-				options["coupling_map"], 
-				options["relayout_qasm_file"],
-			)
-
-		#endregion
-
-		# Routing
-		#region routing
-		print("="*80)
-		print(f"Doing Routing for {options['relayout_qasm_file']}...")
-		print("="*80)
-		if exists(options["mapped_qasm_file"]):
-			print(
-				f"Found existing file for {options['mapped_qasm_file']}, "
-				"skipping routing" 
-			)
-		elif not args.partition_only:
-			if not args.dummy_map:
-				do_routing(
-					options["relayout_qasm_file"], 
-					options["coupling_map"], 
-					options["mapped_qasm_file"],
-					options,
-				)
-			else:
-				dummy_routing(
-					options["relayout_qasm_file"], 
-					options["coupling_map"], 
-					options["mapped_qasm_file"],
-				)
-		#endregion
 	print(run_stats(options, post_stats=False))
 	if not args.partition_only:
 		print(run_stats(options, post_stats=True))
