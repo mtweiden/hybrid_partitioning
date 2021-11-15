@@ -71,9 +71,6 @@ if __name__ == '__main__':
 
         total_four_blocks = sum(partitions[-3:])
 
-        print(total_partitions)
-        print(total_four_blocks)
-
         routability_score_all = np.dot(partitions, PARTITION_SCORES) / total_partitions
 
         routability_score_fours = np.dot(partitions[-3:], PARTITION_SCORES[-3:]) / total_four_blocks
