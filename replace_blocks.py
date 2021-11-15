@@ -4,8 +4,9 @@ from sys import argv
 from os import listdir
 from pickle import load, dump
 from topology import kernel_score_function, get_logical_operations, construct_permuted_kernel
-from util import load_block_circuit
+from util import load_block_circuit, setup_options
 from itertools import permutations
+from stas import setup_args
 
 
 def match_kernel(
@@ -49,11 +50,10 @@ def match_kernel(
 		
 	elif num_qudits == 4:
 		# 2-2-discon, 4-line, 4-ring, 4-star
-		if options['topology'] == "mesh":
-			templates = [
-				[(0,1),(1,2),(2,3)],
-				[(0,1),(0,2),(0,3)],
-			]
+		templates = [
+		    [(0,1),(1,2),(2,3)],
+		    [(0,1),(0,2),(0,3)],
+		]
 
 	elif num_qudits == 5:
 		# 2-3-discon, 5-line, 5-tee, 5-dipper, 5-star
@@ -81,19 +81,15 @@ def match_kernel(
 
 
 if __name__ == "__main__":
-	block_dir   = argv[1]
-
+	args = setup_args()
+	options = setup_options(args.qasm_file, args)
+	block_dir = options["partition_dir"]
 	blocks = sorted(listdir(block_dir))
 	blocks.remove("structure.pickle")
 
 	with open(f"{block_dir}/structure.pickle", "rb") as f:
 		structure = load(f)
 
-	options = {
-		"blocksize" : 4,
-		"topology"  : "mesh",
-		"checkpoint_as_qasm": True,
-	}
 
 	for i, block in enumerate(blocks):
 		block_path = f"{block_dir}/{block}"

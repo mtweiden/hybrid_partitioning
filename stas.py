@@ -28,14 +28,15 @@ import logging
 logging.getLogger('bqskit').setLevel(logging.INFO)
 
 
-if __name__ == '__main__':
+def setup_args(need_qasm=True):
 	# Run setup
 	#region setup
 	parser = argparse.ArgumentParser(
 		description="Run subtopoloy aware synthesis"
 		" based on the hybrid logical-physical topology scheme"
 	)
-	parser.add_argument("qasm_file", type=str, help="file to synthesize")
+	if need_qasm:
+		parser.add_argument("qasm_file", type=str, help="file to synthesize")
 	parser.add_argument(
 		"--blocksize", dest="blocksize", action="store", nargs='?', default=3,
 		type=int, help="synthesis block size"
@@ -66,7 +67,12 @@ if __name__ == '__main__':
 		default="none", type=str,
 		help="[none | random | sabre]"
 	)
-	args = parser.parse_args()
+	return parser.parse_args()
+
+
+if __name__ == '__main__':
+	
+	args = setup_args()
 	#endregion
 
 	options = setup_options(args.qasm_file, args)
@@ -204,7 +210,6 @@ if __name__ == '__main__':
 	#region synthesis
 	print("="*80)
 	print(f"Doing Synthesis on {options['layout_qasm_file']}...")
-	print("="*80)
 	if exists(options['synthesized_qasm_file']):
 		print(
 			f"Found existing file for {options['synthesized_qasm_file']}, "
@@ -217,6 +222,9 @@ if __name__ == '__main__':
 		for block_number in block_list:
 			print(
 				f"    Synthesizing block {block_number+1}/{len(block_files)}"
+			)
+			print(
+				f"    Synthesizing block name {block_names[block_number]}"
 			)
 			synthesize(
 				block_name=block_names[block_number],

@@ -9,7 +9,6 @@ if __name__ == '__main__':
 			block_files/qft_5_mesh_3_3_blocksize_3 \
 			2
 			shortest_path
-
 	Synthesizes block_2 of already partitioned 
 	`qft_5_mesh_3_3_blocksize_3_shortest-path` project.
 	"""
@@ -18,19 +17,19 @@ if __name__ == '__main__':
 	)
 	parser.add_argument("partition_dir", type=str, 
 		help="path to block files to synthesize")
-	parser.add_argument("edge_scheme", type=str,
-		help="<shortest_path | nearest_physical | mst_path | mst_density>")
 	parser.add_argument("block_number", type = int,
 		help="specific block to synthesize")
+	parser.add_argument("--alltoall",action="store_true",
+		help="synthesize to all to all")
 	args = parser.parse_args()
-
 	files = sorted(list(listdir(args.partition_dir)))
 	files.remove("structure.pickle")
-
 	target_name = args.partition_dir.split("/")[-1]
-	target_name += "_kernel"
+	if not args.alltoall:
+		target_name += "_kernel"
+	else:
+		target_name += "_alltoall"
 	block_name = files[args.block_number].split(".qasm")[0]
-
 	qudit_group = load_circuit_structure(args.partition_dir)[args.block_number]
 	options = {
 		"target_name" : target_name,
@@ -39,7 +38,6 @@ if __name__ == '__main__':
 		"num_synth_procs" : 1,
 		"checkpoint_as_qasm" : True,
 	}
-
 	synthesize(
 		block_name,
 		qudit_group,

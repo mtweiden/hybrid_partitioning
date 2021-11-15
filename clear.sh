@@ -1,5 +1,5 @@
-#rm layout_qasm/*
-#rm -rf block_files/*
+rm layout_qasm/*
+rm -rf block_files/*
 rm figures/*
 rm synthesized_qasm/*
 rm mapped_qasm/*
