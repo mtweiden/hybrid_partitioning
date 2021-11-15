@@ -39,13 +39,13 @@ if __name__ == '__main__':
         options = setup_options(args.qasm_file, args)
         pre = run_stats_dict(options, post_stats=False)
         post = run_stats_dict(options, post_stats=True)
-        if not exists(options["remapped_qasm_file"]):
-            replace_blocks(options)
-        replace = run_stats_dict(options, resynthesized=True)
+        all = [pre, post]
+        if not GET_PARTITION_DATA:
+            if not exists(options["remapped_qasm_file"]):
+                replace_blocks(options)
+            replace = run_stats_dict(options, resynthesized=True)
 
-        all = [pre,post, replace]
-
-        results = [post, replace]
+            all = [pre,post, replace]
 
         for data in all:
             data["name"] = "_".join(name_arr[0:2])
@@ -53,6 +53,10 @@ if __name__ == '__main__':
             data["topology"] = args.map_type
 
         best_cnots = post["Total CNOTs"]
+        best_4_block_cnots = post["Total 4-block CNOTs"]
+
+        print(best_cnots)
+        print(best_4_block_cnots)
 
         empty = pre.get("empty", 0)
         two_line = pre.get("2-line", 0)
@@ -67,6 +71,9 @@ if __name__ == '__main__':
 
         total_four_blocks = sum(partitions[-3:])
 
+        print(total_partitions)
+        print(total_four_blocks)
+
         routability_score_all = np.dot(partitions, PARTITION_SCORES) / total_partitions
 
         routability_score_fours = np.dot(partitions[-3:], PARTITION_SCORES[-3:]) / total_four_blocks
@@ -75,7 +82,8 @@ if __name__ == '__main__':
         if GET_PARTITION_DATA:
             routability_data = {}
             routability_data["name"] = "_".join(name_arr[0:2])
-            routability_data["Total CNOTs"] = best_cnots
+            routability_data["Average CNOTs"] = best_cnots / total_partitions
+            routability_data["Average 4 block CNOTs"] = best_4_block_cnots / total_four_blocks
             routability_data["routability_score_all_blocks"] = routability_score_all
             routability_data["routability_score_four_blocks"] = routability_score_fours
             rows.append(routability_data)
@@ -84,6 +92,9 @@ if __name__ == '__main__':
 
         print( "_".join(name_arr[0:2]))
 
+        print(routability_data)
+        break
+
     full_data = pd.DataFrame.from_dict(rows, orient='columns')
 
-    full_data.to_csv("out.csv")
+    full_data.to_csv("out_routability.csv")

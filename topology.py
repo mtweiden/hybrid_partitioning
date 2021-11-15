@@ -620,6 +620,7 @@ def run_stats_dict(
 
     active_qudits_list = []
     cnots_list  = []
+    cnots_four_block_list = []
     depth_list  = []
     edge_score_list  = []
     node_score_list  = []
@@ -637,6 +638,8 @@ def run_stats_dict(
             options=options
         )
         active_qudits_list.append(num_active)
+        if (num_active > 3):
+            cnots_four_block_list.append(cnots)
         cnots_list.append(cnots)
         depth_list.append(depth)
         edge_score_list.append(score[0])
@@ -649,6 +652,7 @@ def run_stats_dict(
 
     output = {
         "Total CNOTs": sum(cnots_list),
+        "Total 4-block CNOTs": sum(cnots_four_block_list),
         "Total matching edge score": sum(edge_score_list),
         "Total matching node score": sum(node_score_list),
         "Average CNOTs": mean(cnots_list),
