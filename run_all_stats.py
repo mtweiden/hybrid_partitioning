@@ -92,9 +92,6 @@ if __name__ == '__main__':
 
         print( "_".join(name_arr[0:2]))
 
-        print(routability_data)
-        break
-
     full_data = pd.DataFrame.from_dict(rows, orient='columns')
 
     full_data.to_csv("out_routability.csv")
