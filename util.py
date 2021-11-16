@@ -153,7 +153,7 @@ def setup_options(
 	options["partition_dir"] = "block_files/" + target_name
 	options["save_part_name"] = target_name
 
-	suffix = "_kernel"
+	suffix = "_qqo"
 
 	target_name += suffix
 	options["target_name"] = target_name
