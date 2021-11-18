@@ -148,13 +148,13 @@ def get_direct_edges(
 
 
 def possible_kernel_names(num_qudits, top_name) -> list[str]:
-	names = ["empty"]
+	names = ["empty", "unknown"]
 
 	if num_qudits >= 2:
 		names.extend(["2-line"])
 
 	if num_qudits >= 3:
-		names.extend(["2-line", "3-line"])
+		names.extend(["3-line"])
 
 	if top_name == "mesh" and num_qudits >= 4:
 		names.extend(["4-line", "2-2-discon", "4-star", "4-ring"])
@@ -192,7 +192,7 @@ def kernel_type(kernel_edges, num_qudits) -> str:
 		# 3-line: 2 edges and 3 distinct qubits
 		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
 		if len(kernel_edges) == 2: 
-			if deg_list[0] == 0 and all([deg_list[i] > 0 for i in range(1,4)]):
+			if deg_list[0]==0 and deg_list[1]==1 and deg_list[2]==1 and deg_list[3]==2:
 				kernel_name = "3-line"
 			if all([deg_list[i] == 1 for i in range(0,4)]):
 				kernel_name = "2-2-discon"
@@ -230,7 +230,7 @@ def collect_stats(
 	block_dir   : str,
 	block_name  : str,
 	blocksize   : int,
-	options     : dict[str, Any],
+	options	 : dict[str, Any],
 ) -> Sequence:
 	"""
 	Given a circuit name/directory and a block number, determine:
@@ -323,7 +323,7 @@ def best_star_kernel(vertex_uses) -> Sequence[tuple[int]]:
 
 
 def construct_permuted_kernel(
-	edge_list    : Sequence[tuple[int]],
+	edge_list	: Sequence[tuple[int]],
 	vertex_order : Sequence[int],
 ) -> Sequence[tuple[int]]:
 	"""
@@ -455,10 +455,10 @@ def kernel_score_function(
 	op_occurances = [u for (u,v) in logical_ops] + [v for (u,v) in logical_ops]
 	kern_occurances = [u for (u,v) in kernel_edges] + [v for (u,v) in kernel_edges]
 
-	op_values     = {n: 0 for n in vertices}
+	op_values	 = {n: 0 for n in vertices}
 	kernel_values = {n: 0 for n in vertices} 
 	for v in vertices:
-		op_values[v]     = op_occurances.count(v)
+		op_values[v]	 = op_occurances.count(v)
 		kernel_values[v] = kern_occurances.count(v)
 	
 	node_score = 0
@@ -583,3 +583,96 @@ def run_stats(
 			string += f"  {k}: {kernel_dict[k]} ({coverage}%)\n"
 		string += get_original_count(options)
 	return string
+
+
+def run_stats_dict(	
+	options : dict[str, Any],
+	post_stats : bool = False,
+	resynthesized : bool = False,
+	remapped : bool = False):
+	# Get the subtopology files
+	sub_files = listdir(options["subtopology_dir"])
+	if "summary.txt" in sub_files:
+		sub_files.remove(f"summary.txt")
+	sub_files = sorted(sub_files)
+
+	# Get the block files
+	if not post_stats:
+		block_dir = options["partition_dir"]
+		block_files = listdir(block_dir)
+		block_files.remove(f"structure.pickle")
+	else:
+		if not resynthesized:
+			block_dir = options["synthesis_dir"]
+			blocks = listdir(options["synthesis_dir"])
+		else:
+			block_dir = options["resynthesis_dir"]
+			blocks = listdir(options["resynthesis_dir"])
+		block_files = []
+		for bf in blocks:
+			if bf.endswith(".qasm"):
+				block_files.append(bf)
+	block_files = sorted(block_files)
+
+	# Get the qudit group
+	with open(f"{options['partition_dir']}/structure.pickle", "rb") as f:
+		structure = pickle.load(f)
+
+	active_qudits_list = []
+	cnots_list  = []
+	cnots_four_block_list = []
+	depth_list  = []
+	edge_score_list  = []
+	node_score_list  = []
+	names = possible_kernel_names(options["blocksize"], options["topology"])
+	kernel_dict = {k:0 for k in names}
+	kernel_coverage = {k:0 for k in names}
+
+	# Run collect_stats on each block
+	for block_num in range(len(block_files)):
+		(num_active, cnots, depth, kernel_name, score) = collect_stats(
+			qudit_group=structure[block_num],
+			block_dir=block_dir,
+			block_name=block_files[block_num],
+			blocksize=options["blocksize"],
+			options=options
+		)
+		active_qudits_list.append(num_active)
+		if (num_active > 3):
+			cnots_four_block_list.append(cnots)
+		cnots_list.append(cnots)
+		depth_list.append(depth)
+		edge_score_list.append(score[0])
+		node_score_list.append(score[1])
+		kernel_dict[kernel_name] += 1
+		kernel_coverage[kernel_name] += cnots
+	total_cnots = sum(cnots_list)
+	for name in names:
+		kernel_coverage[name] /= total_cnots
+
+	output = {
+		"Total CNOTs": sum(cnots_list),
+		"Total 4-block CNOTs": sum(cnots_four_block_list),
+		"Total matching edge score": sum(edge_score_list),
+		"Total matching node score": sum(node_score_list),
+		"Average CNOTs": mean(cnots_list),
+		"Average depth": mean(depth_list),
+		"Average edge score": mean(edge_score_list),
+		"Average node score": mean(node_score_list)
+	}
+
+	if resynthesized:
+		output["type"]="REPLACE"
+	elif post_stats:
+		output["type"]="POST"
+	else:
+		output["type"]="PRE"
+
+	if post_stats:
+		output.update(get_mapping_results(options))
+	elif resynthesized:
+		output.update(get_remapping_results(options))
+	else:
+		output.update(kernel_dict)
+	
+	return output
