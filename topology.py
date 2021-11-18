@@ -158,14 +158,14 @@ def possible_kernel_names(num_qudits, top_name) -> list[str]:
 
     if top_name == "mesh" and num_qudits >= 4:
         names.extend(["4-line", "2-2-discon", "4-star", "4-ring"])
-    elif top_name == "falcon" and num_qudits >= 4:
+    elif (top_name == "falcon" or top_name == "sycamore") and num_qudits >= 4:
         names.extend(["4-line", "2-2-discon", "4-star"])
     elif top_name == "linear" and num_qudits >= 4:
         names.extend(["4-line", "2-2-discon"])
 
     if top_name == "mesh" and num_qudits >= 5:
         names.extend(["2-3-discon", "5-star", "5-tee", "5-line", "5-dipper"])
-    elif top_name == "falcon" and num_qudits >= 5:
+    elif (top_name == "falcon" or top_name == "sycamore") and num_qudits >= 5:
         names.extend(["2-3-discon", "5-tee", "5-line"])
     elif top_name == "linear" and num_qudits >= 5:
         names.extend(["2-3-discon", "5-line"])
@@ -386,7 +386,7 @@ def match_kernel(
                 [(0,1), (0,2), (0,3)],
             ]
         # 2-2-discon, 4-line, 4-star
-        elif options['topology'] == "falcon":
+        elif options['topology'] == "falcon" or options['topology'] == "sycamore":
             templates = [
                 [(0,1), (2,3)],
                 [(0,1), (1,2), (2,3)], 
@@ -410,7 +410,7 @@ def match_kernel(
                 [(0,1), (0,2), (0,3), (0,4)],
             ]
         # 2-3-discon, 5-line, 5-tee
-        elif options['topology'] == "falcon":
+        elif options['topology'] == "falcon" or options['topology'] == "sycamore":
             templates = [
                 [(0,1), (2,3), (3,4)],
                 [(0,1), (1,2), (2,3), (3,4)],

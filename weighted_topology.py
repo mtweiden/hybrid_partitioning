@@ -613,7 +613,7 @@ def select_kernel(
 ) -> Graph | None:
 	if options["coupling_map"] == "mesh":
 		return select_mesh_kernel(circuit_file, qudit_group, options)
-	elif options["coupling_map"] == "falcon":
+	elif options["coupling_map"] == "falcon" or options["coupling_map"] == "sycamore":
 		return select_falcon_kernel(circuit_file, qudit_group, options)
 	else:
 		return select_linear_kernel(circuit_file, qudit_group, options)

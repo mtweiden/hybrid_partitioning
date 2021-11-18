@@ -52,8 +52,9 @@ if __name__ == '__main__':
             data["blocksize"] = args.blocksize
             data["topology"] = args.map_type
 
+        best_swaps= post["SWAPs from routing"]
         best_cnots = post["Total CNOTs"]
-        best_4_block_cnots = post["Total 4-block CNOTs"]
+        best_4_block_snots = post["Total 4-block CNOTs"]
 
         print(best_cnots)
         print(best_4_block_cnots)
@@ -79,8 +80,9 @@ if __name__ == '__main__':
         if GET_PARTITION_DATA:
             routability_data = {}
             routability_data["name"] = "_".join(name_arr[0:2])
+            routability_data["Average Swaps"] = best_swaps / total_partitions
             routability_data["Average CNOTs"] = best_cnots / total_partitions
-            routability_data["Average 4 block CNOTs"] = best_4_block_cnots / total_four_blocks
+            routability_data["Average 4-block CNOTs"] = best_4_block_cnots / total_four_blocks
             routability_data["routability_score_all_blocks"] = routability_score_all
             routability_data["routability_score_four_blocks"] = routability_score_fours
             rows.append(routability_data)

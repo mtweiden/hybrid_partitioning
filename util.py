@@ -77,7 +77,7 @@ def setup_options(
 ) -> dict[str,Any]:
 
     # Select coupling map
-    valid_map_types = ["mesh", "linear", "falcon"]
+    valid_map_types = ["mesh", "linear", "falcon", "sycamore"]
     if not args.map_type in valid_map_types:
         raise RuntimeError(
             f"{args.map_type} is not a valid coupling map type."
@@ -94,6 +94,9 @@ def setup_options(
             f"{args.map_type}_{num_q}"
         )
         num_p = num_q
+    elif args.map_type == "sycamore":
+        coupling_map = "sycamore_54"
+        num_p = 54
     else: #elif args.map_type == "falcon"
         #sizes = [16, 27, 65]
         if num_q <= 16:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from os.path import exists
+import os
 from os import mkdir, listdir
+import json
 import argparse
 from post_synth import replace_blocks
 
@@ -14,7 +16,7 @@ from bqskit.passes.util.intermediate import SaveIntermediatePass
 
 from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
-from topology import get_logical_operations, kernel_type, run_stats, match_kernel
+from topology import get_logical_operations, kernel_type, run_stats, match_kernel, run_stats_dict
 from util import (
 	load_circuit_structure,
 	save_block_topology,
@@ -26,6 +28,13 @@ from old_codebase import synthesize
 # Enable logging
 import logging
 logging.getLogger('bqskit').setLevel(logging.INFO)
+
+
+def save_dict(options, data_dict, label):
+	file_name = options["save_part_name"] +"_" + label + "_data.json"
+	full_path = os.path.join("final_data", file_name)
+	with open(full_path, "w") as f:
+		json.dump(data_dict, f, indent=4)
 
 
 def setup_args(need_qasm=True):
@@ -55,7 +64,7 @@ def setup_args(need_qasm=True):
 	)
 	parser.add_argument("--topology", dest="map_type", action="store",
 		default="mesh", type=str,
-		help="[mesh | linear | falcon]"
+		help="[mesh | linear | falcon | sycamore]"
 	)
 	parser.add_argument("--router", dest="router", action="store",
 		default="qiskit", type=str,
@@ -295,9 +304,15 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	print(run_stats(options, post_stats=False))
+	pre = run_stats_dict(options, post_stats=False)
+	save_dict(options, pre, "pre")
+	print(pre)
 	if not args.partition_only:
-		print(run_stats(options, post_stats=True))
+		post = run_stats_dict(options, post_stats=True)
+		save_dict(options, post, "post")
 		if not exists(options["remapped_qasm_file"]):
 			replace_blocks(options)
-		print(run_stats(options, resynthesized=True))
+		replace = run_stats_dict(options, resynthesized=True)
+		save_dict(options, replace, "replace")
+		print(post)
+		print(replace)

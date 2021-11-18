@@ -6,4 +6,5 @@ synthesis_files/*
 synthesized_qasm/*
 subtopology_files/*
 layout_qasm/*
+qasm/*
 __pycache__/*
