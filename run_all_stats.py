@@ -5,7 +5,7 @@ import argparse
 from post_synth import replace_blocks
 
 from topology import run_stats_dict
-from stas import setup_args
+from stas import setup_args, save_dict
 
 from util import setup_options
 
@@ -46,6 +46,10 @@ if __name__ == '__main__':
             replace = run_stats_dict(options, resynthesized=True)
 
             all = [pre,post, replace]
+            save_dict(options,replace, "replace")
+
+        save_dict(options,pre, "pre")
+        save_dict(options,post, "post")
 
         for data in all:
             data["name"] = "_".join(name_arr[0:2])
@@ -54,7 +58,7 @@ if __name__ == '__main__':
 
         best_swaps= post["SWAPs from routing"]
         best_cnots = post["Total CNOTs"]
-        best_4_block_snots = post["Total 4-block CNOTs"]
+        best_4_block_cnots = post["Total 4-block CNOTs"]
 
         print(best_cnots)
         print(best_4_block_cnots)
