@@ -160,6 +160,7 @@ def setup_options(
 	options["synthesized_qasm_file"] = "synthesized_qasm/" + target_name + ".qasm"
 	options["resynthesized_qasm_file"] = "resynthesized_qasm/" + target_name + ".qasm"
 	options["relayout_qasm_file"] = "relayout_qasm/" + target_name + ".qasm"
+	options["relayout_remapping_file"] = "relayout_qasm/" + target_name + ".pickle"
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name + f"_{args.router}" + ".qasm"
 	options["remapped_qasm_file"] = "mapped_qasm/" + f"{target_name}_{args.router}_remapped.qasm"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
@@ -167,6 +168,10 @@ def setup_options(
 	options["nosynth_dir"] = options["synthesis_dir"] + f"_{args.router}_nosynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
 	options["kernel_dir"] = f"kernels/{coupling_map}_blocksize_{args.blocksize}"
+
+	options["unsynthesized_layout"] = f"unsynthesized_layout/{target_name}.qasm"
+	options["unsynthesized_qubit_remapping"] = f"unsynthesized_layout/{target_name}.pickle"
+	options["unsynthesized_mapping"] = f"unsynthesized_mapping/{target_name}_{args.router}.qasm"
 
 	return options
 
