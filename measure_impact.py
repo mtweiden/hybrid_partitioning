@@ -130,8 +130,6 @@ if __name__ == '__main__':
 			options["unsynthesized_mapping"],
 			options,
 		)
-		#with open(options["unsynthesized_qubit_remapping"], "wb") as f:
-		#	pickle.dump(l2p_mapping, f)
 	#endregion
 
 	# Collect stats
