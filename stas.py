@@ -4,6 +4,7 @@ import os
 from os import mkdir, listdir
 import json
 import argparse
+import pickle
 from post_synth import replace_blocks
 
 from bqskit.ir.circuit import Circuit

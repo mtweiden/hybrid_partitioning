@@ -152,10 +152,8 @@ def possible_kernel_names(num_qudits, top_name) -> list[str]:
 
     if num_qudits >= 2:
         names.extend(["2-line"])
-
-    if num_qudits >= 3:
-        names.extend(["2-line", "3-line"])
-
+	if num_qudits >= 3:
+		names.extend(["3-line"])
     if top_name == "mesh" and num_qudits >= 4:
         names.extend(["4-line", "2-2-discon", "4-star", "4-ring"])
     elif (top_name == "falcon" or top_name == "sycamore") and num_qudits >= 4:
