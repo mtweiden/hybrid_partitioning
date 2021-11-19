@@ -288,28 +288,51 @@ class PartitionAnalyzer():
 			average_distances.append(total_distance/len(record.qubit_group))
 			durations.append(record.stop_cycle - record.stop_cycle)
 			internal_swaps.append(record.swaps)
-		
-		for block_num in range(len(self.record_list)):
-			string = f"BLOCK {block_num}\n"
-			#string += f"  total distance: {total_distances[block_num]}\n"
-			string += f"  average distance: {average_distances[block_num]}\n"
-			#string += f"  total touches: {total_touches[block_num]}\n"
-			string += f"  average touches:  {average_touches[block_num]}\n"
-			string += f"  duration:         {durations[block_num]}\n"
-			string += f"  swaps:            {internal_swaps[block_num]}\n"
-			print(string)
 
-		final_stats = (
-			f"Total CNOTs: {self.cnots}\n"
-			f"Total SWAPs: {self.swaps}\n"
-			f"  Internal SWAPs:   {sum(internal_swaps)}\n"
-			f"  Average internal: {round(mean(internal_swaps),3)}\n"
-			f"  Median internal:  {median(internal_swaps)}\n"
-			f"Total disance: {sum(total_distances)}\n"
-			f"  Average distance: {round(mean(total_distances), 3)}\n"
-			f"  Median  distance: {median(total_distances)}\n"
-			f"Total touches: {sum(total_touches)}\n"
-			f"  Average touches: {round(mean(total_touches), 3)}\n"
-			f"  Median  touches: {median(total_touches)}"
-		)
-		print(final_stats)
+		string = ""
+		blocksize = max([
+			len(self.record_list[x].qubit_group) 
+			for x in range(len(self.record_list))
+		])
+		string += f"block_num, duration, internal swaps, "
+		for q in range(blocksize):
+			string += f"distance[{q}], "
+		for q in range(blocksize):
+			string += f"touches[{q}], "
+		string += "\n"
+		for block_num in range(len(self.record_list)):
+			string += (
+				f"{block_num}, {durations[block_num]}, {internal_swaps[block_num]}, "
+			)
+			qubit_group = self.record_list[block_num].qubit_group
+			for q in qubit_group:
+				string += f"{len(self.record_list[block_num].travel[q])}, "
+			for q in qubit_group:
+				string += f"{self.record_list[block_num].touches[q]}, "
+			string += "\n"
+		print(string)
+		
+		#for block_num in range(len(self.record_list)):
+		#	string = f"BLOCK {block_num}\n"
+		#	#string += f"  total distance: {total_distances[block_num]}\n"
+		#	string += f"  average distance: {average_distances[block_num]}\n"
+		#	#string += f"  total touches: {total_touches[block_num]}\n"
+		#	string += f"  average touches:  {average_touches[block_num]}\n"
+		#	string += f"  duration:         {durations[block_num]}\n"
+		#	string += f"  swaps:            {internal_swaps[block_num]}\n"
+		#	print(string)
+
+		#final_stats = (
+		#	f"Total CNOTs: {self.cnots}\n"
+		#	f"Total SWAPs: {self.swaps}\n"
+		#	f"  Internal SWAPs:   {sum(internal_swaps)}\n"
+		#	f"  Average internal: {round(mean(internal_swaps),3)}\n"
+		#	f"  Median internal:  {median(internal_swaps)}\n"
+		#	f"Total disance: {sum(total_distances)}\n"
+		#	f"  Average distance: {round(mean(total_distances), 3)}\n"
+		#	f"  Median  distance: {median(total_distances)}\n"
+		#	f"Total touches: {sum(total_touches)}\n"
+		#	f"  Average touches: {round(mean(total_touches), 3)}\n"
+		#	f"  Median  touches: {median(total_touches)}"
+		#)
+		#print(final_stats)
