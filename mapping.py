@@ -93,8 +93,6 @@ def do_routing(
 	# Gather circuit data
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
 
-	l2p_map = True # Buggy spaghetti so that pytket works
-
 	if router == "qiskit":
 		try:
 			circ = QuantumCircuit.from_qasm_file(input_qasm_file)
@@ -110,8 +108,8 @@ def do_routing(
 				pass_man = PassManager([routing])
 				new_circ = pass_man.run(circ)
 				new_qasm = new_circ.qasm()
-				qiskit_map = routing.property_set['final_layout'].get_virtual_bits()
-				l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
+				#qiskit_map = routing.property_set['final_layout'].get_virtual_bits()
+				#l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
 			else:
 				print("  WARNING: Router could not handle this coupling graph")
 				return False
@@ -128,7 +126,8 @@ def do_routing(
 
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
-	return l2p_map
+	return True
+	#return l2p_map
 
 
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):
