@@ -299,6 +299,13 @@ class PartitionAnalyzer():
 			string += f"  swaps:            {internal_swaps[block_num]}\n"
 			print(string)
 
-		print("Total CNOTS: ", self.cnots)
-		print("Total SWAPS: ", self.swaps)
-		print("  Internal SWAPs ", sum(internal_swaps))
+		final_stats = (
+			f"Total CNOTs: {self.cnots}\n"
+			f"Total SWAPs: {self.swaps}\n"
+			f"  Internal SWAPs: {sum(internal_swaps)}\n"
+			f"Total disance: {sum(total_distances)}\n"
+			f"  Average distance: {round(mean(total_distances), 3)}\n"
+			f"Total touches: {sum(total_touches)}\n"
+			f"  Average touches: {round(mean(total_touches), 3)}"
+		)
+		print(final_stats)
