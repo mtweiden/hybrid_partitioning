@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Sequence
 
-from statistics import mean
+from statistics import mean, median
 
 from bqskit.ir.operation import Operation
 from topology import get_logical_operations
@@ -302,10 +302,14 @@ class PartitionAnalyzer():
 		final_stats = (
 			f"Total CNOTs: {self.cnots}\n"
 			f"Total SWAPs: {self.swaps}\n"
-			f"  Internal SWAPs: {sum(internal_swaps)}\n"
+			f"  Internal SWAPs:   {sum(internal_swaps)}\n"
+			f"  Average internal: {round(mean(internal_swaps),3)}\n"
+			f"  Median internal:  {median(internal_swaps)}\n"
 			f"Total disance: {sum(total_distances)}\n"
 			f"  Average distance: {round(mean(total_distances), 3)}\n"
+			f"  Median  distance: {median(total_distances)}\n"
 			f"Total touches: {sum(total_touches)}\n"
-			f"  Average touches: {round(mean(total_touches), 3)}"
+			f"  Average touches: {round(mean(total_touches), 3)}\n"
+			f"  Median  touches: {median(total_touches)}"
 		)
 		print(final_stats)
