@@ -13,13 +13,17 @@ for name in synth_files:
         continue
     if os.path.exists(mapped_name):
         continue
-    if len(os.listdir(dir_name)) != 0:
-        name_arr = name.split("_")
-        test_name = "_".join(name_arr[0:2])
-        topology = name_arr[2]
-        blocksize = name_arr[5]
-        partitioner = name_arr[-2]
+    
+    try:
+        if len(os.listdir(dir_name)) != 0:
+            name_arr = name.split("_")
+            test_name = "_".join(name_arr[0:-6])
+            topology = name_arr[-6]
+            blocksize = name_arr[-3]
+            partitioner = name_arr[-2]
    
-        cmd = "python stas.py qasm/{}.qasm --topology={} --blocksize={} --partitioner={}".format(test_name, topology, blocksize, partitioner)
-        print(cmd)
-        os.system(cmd)
+            cmd = "python stas.py qasm/{}.qasm --topology={} --blocksize={} --partitioner={}".format(test_name, topology, blocksize, partitioner)
+            print(cmd)
+            os.system(cmd)
+    except:
+        continue

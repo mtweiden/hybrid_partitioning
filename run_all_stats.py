@@ -5,12 +5,13 @@ import argparse
 from post_synth import replace_blocks
 
 from topology import run_stats_dict
-from stas import setup_args, save_dict
+from stas import setup_args, save_dict, get_saved_dict
 
 from util import setup_options
 
 import pandas as pd
 import numpy as np
+import json
 
 # Enable logging
 import logging
@@ -31,20 +32,36 @@ if __name__ == '__main__':
             continue
         # grab args from name
         name_arr = qasm.split("_")
-        args.qasm_file = "qasm/" + "_".join(name_arr[0:2]) + ".qasm"
-        args.blocksize = int(name_arr[5])
-        args.map_type = name_arr[2]
-        args.partitioner = name_arr[6]
-        args.router = name_arr[8].replace(".qasm", "")
+        test_name = "_".join(name_arr[0:-7])
+        topology = name_arr[-7]
+        blocksize = name_arr[-4]
+        partitioner = name_arr[-3]
+        args.qasm_file = "qasm/" + test_name + ".qasm"
+        args.blocksize = int(blocksize)
+        args.map_type = topology
+        args.partitioner = partitioner
+        args.router = name_arr[-1].replace(".qasm", "")
         options = setup_options(args.qasm_file, args)
-        pre = run_stats_dict(options, post_stats=False)
-        post = run_stats_dict(options, post_stats=True)
+
+        pre = get_saved_dict(options, "pre")
+
+        print(test_name)
+        if pre is None:
+            print("Running PREEEE")
+            pre = run_stats_dict(options, post_stats=False)
+        
+        post = get_saved_dict(options, "post")
+            
+        if post is None: 
+            post = run_stats_dict(options, post_stats=True)
+
         all = [pre, post]
         if not GET_PARTITION_DATA:
-            if not exists(options["remapped_qasm_file"]):
-                replace_blocks(options)
-            replace = run_stats_dict(options, resynthesized=True)
-
+            replace = get_saved_dict(options, "replace")
+            if replace is None:
+                if not exists(options["remapped_qasm_file"]):
+                    replace_blocks(options)
+                replace = run_stats_dict(options, resynthesized=True)
             all = [pre,post, replace]
             save_dict(options,replace, "replace")
 
@@ -52,7 +69,7 @@ if __name__ == '__main__':
         save_dict(options,post, "post")
 
         for data in all:
-            data["name"] = "_".join(name_arr[0:2])
+            data["name"] = test_name
             data["blocksize"] = args.blocksize
             data["topology"] = args.map_type
 
@@ -83,7 +100,7 @@ if __name__ == '__main__':
 
         if GET_PARTITION_DATA:
             routability_data = {}
-            routability_data["name"] = "_".join(name_arr[0:2])
+            routability_data["name"] = test_name
             routability_data["Average Swaps"] = best_swaps / total_partitions
             routability_data["Average CNOTs"] = best_cnots / total_partitions
             routability_data["Average 4-block CNOTs"] = best_4_block_cnots / total_four_blocks
@@ -92,8 +109,6 @@ if __name__ == '__main__':
             rows.append(routability_data)
         else:
             rows.extend(all)
-
-        print( "_".join(name_arr[0:2]))
 
     full_data = pd.DataFrame.from_dict(rows, orient='columns')
 

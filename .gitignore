@@ -7,4 +7,5 @@ synthesized_qasm/*
 subtopology_files/*
 layout_qasm/*
 qasm/*
+final_data/*
 __pycache__/*
