@@ -283,7 +283,7 @@ class PartitionAnalyzer():
 			distances = list(record.travel.values())
 			total_distance = 0
 			for d in distances:
-				total_distance += len(d) - 1
+				total_distance += max(len(d) - 1, 0)
 			total_distances.append(total_distance)
 			average_distances.append(total_distance/len(record.qubit_group))
 			durations.append(record.stop_cycle - record.stop_cycle)
