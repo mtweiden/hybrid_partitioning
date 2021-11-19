@@ -1,5 +1,6 @@
 # Qiskit dependencies
 from __future__ import annotations
+import pickle
 from typing import Any
 
 from qiskit import QuantumCircuit
@@ -30,6 +31,20 @@ def find_num_qudits(
 	return num_logical
 
 
+def manual_layout(input_qasm_file, remapping_file, output_qasm_file, options):
+	with open(remapping_file, "rb") as f:
+		remapping = pickle.load(f)
+	with open(input_qasm_file, 'r') as in_qasm:
+		with open(output_qasm_file, 'w') as out_qasm:
+			for line in in_qasm:
+				if match('qreg q\[\d+\];', line):
+					out_qasm.write('qreg q[%d];\n' %(options["num_p"]))
+				else:
+					out_qasm.write(format(line, remapping))
+	return remapping 
+
+
+
 def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 
 	# Gather circuit data
@@ -53,8 +68,7 @@ def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 	new_circ = pass_man.run(circ)
 	qiskit_map = layout.property_set['layout'].get_virtual_bits()
 	l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
-
-	# Qiskit doesn't use physical numbering in the qasm() method, so parse the 
+	# Qiskit doesn't use physical numbering in the qasm() method, so parse the
 	# qasm file and do the mapping here.
 	with open(input_qasm_file, 'r') as in_qasm:
 		with open(output_qasm_file, 'w') as out_qasm:
@@ -63,6 +77,8 @@ def do_layout(input_qasm_file, coupling_map_file, output_qasm_file):
 					out_qasm.write('qreg q[%d];\n' %(num_q))
 				else:
 					out_qasm.write(format(line, l2p_map))
+	# Return the logical to physical mapping so it can be saved
+	return l2p_map
 
 
 def do_routing(
@@ -77,6 +93,8 @@ def do_routing(
 	# Gather circuit data
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
 
+	l2p_map = True # Buggy spaghetti so that pytket works
+
 	if router == "qiskit":
 		try:
 			circ = QuantumCircuit.from_qasm_file(input_qasm_file)
@@ -84,20 +102,16 @@ def do_routing(
 				# Set up Passes
 				#seed = 42
 				coup_map = CouplingMap(list(coupling_graph))
-				layout = SabreLayout(
-					coupling_map=coup_map,
-					routing_pass=SabreSwap(coupling_map=coup_map,heuristic="lookahead"),
-					max_iterations=10,
-					#seed=seed,
-				)
 				routing = SabreSwap(
 					coupling_map=coup_map,
 					heuristic='lookahead',
 					#seed=seed
 				)
-				pass_man = PassManager([layout, routing])
+				pass_man = PassManager([routing])
 				new_circ = pass_man.run(circ)
 				new_qasm = new_circ.qasm()
+				qiskit_map = routing.property_set['final_layout'].get_virtual_bits()
+				l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
 			else:
 				print("  WARNING: Router could not handle this coupling graph")
 				return False
@@ -114,7 +128,7 @@ def do_routing(
 
 	with open(output_qasm_file, 'w') as out_qasm:
 		out_qasm.write(new_qasm)
-	return True
+	return l2p_map
 
 
 def dummy_layout(input_qasm_file, coupling_map_file, output_qasm_file):

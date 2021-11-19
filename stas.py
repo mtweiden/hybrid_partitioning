@@ -2,6 +2,7 @@ from __future__ import annotations
 from os.path import exists
 from os import mkdir, listdir
 import argparse
+import pickle
 from post_synth import replace_blocks
 
 from bqskit.ir.circuit import Circuit
@@ -254,12 +255,13 @@ if __name__ == '__main__':
 				"skipping relayout" 
 			)
 		else:
-			do_layout(
+			logical_to_physical = do_layout(
 				options["synthesized_qasm_file"],
 				options["coupling_map"], 
 				options["relayout_qasm_file"],
 			)
-
+			with open(options["relayout_remapping_file"], "wb") as f:
+				pickle.dump(logical_to_physical, f)
 		#endregion
 
 		# Routing
