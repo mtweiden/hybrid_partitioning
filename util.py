@@ -153,7 +153,12 @@ def setup_options(
 	options["partition_dir"] = "block_files/" + target_name
 	options["save_part_name"] = target_name
 
-	suffix = "_kernel"
+	if args.alltoall:
+		suffix = "_alltoall"
+	elif args.logical_connectivity:
+		suffix = "_logicalconnectivity"
+	else:
+		suffix = "_kernel"
 
 	target_name += suffix
 	options["target_name"] = target_name
