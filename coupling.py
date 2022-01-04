@@ -144,6 +144,7 @@ if __name__ == "__main__":
     get_coupling_map("mesh", 100, True)
     get_coupling_map("mesh", 121, True)
     get_coupling_map("mesh", 144, True)
+    get_coupling_map("mesh", 400, True)
 
     get_coupling_map("linear", 5, True)
     get_coupling_map("linear", 9, True)
@@ -175,6 +176,7 @@ if __name__ == "__main__":
     get_coupling_map("linear", 128, True)
     get_coupling_map("linear", 140, True)
     get_coupling_map("linear", 142, True)
+    get_coupling_map("linear", 400, True)
 
     # Falcons
     # 16
