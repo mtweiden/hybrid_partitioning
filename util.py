@@ -108,6 +108,12 @@ def setup_options(
 		elif num_q <= 113:
 			coupling_map = f"falcon_113"
 			num_p = 113
+		elif num_q <= 209:
+			coupling_map = f"falcon_209"
+			num_p = 209
+		elif num_q <= 435:
+			coupling_map = f"falcon_435"
+			num_p = 435 
 		else:
 			raise RuntimeError(
 				f"{num_q} qubits is too large for the falcon map type."
