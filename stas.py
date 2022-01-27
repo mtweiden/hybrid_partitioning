@@ -7,6 +7,7 @@ import argparse
 import pickle
 from post_synth import replace_blocks
 
+
 from bqskit.ir.circuit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
@@ -89,10 +90,7 @@ def setup_args(need_qasm=True):
 
 
 if __name__ == '__main__':
-    
     args = setup_args()
-    #endregion
-
     options = setup_options(args.qasm_file, args)
     if not exists(options["synthesis_dir"]):
         mkdir(options["synthesis_dir"])

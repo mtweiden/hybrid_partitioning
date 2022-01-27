@@ -19,7 +19,7 @@ logging.getLogger('bqskit').setLevel(logging.INFO)
 
 PARTITION_SCORES = [1, 4, 12, 28, 24, 8]
 
-GET_PARTITION_DATA = True
+GET_PARTITION_DATA = False
 
 if __name__ == '__main__':
     args =  setup_args(need_qasm=False)
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     rows = []
 
     for qasm in qasms:
-        if "remapped" in qasm:
+        if "remapped" in qasm or "falcon" in qasm:
             continue
         # grab args from name
         name_arr = qasm.split("_")
