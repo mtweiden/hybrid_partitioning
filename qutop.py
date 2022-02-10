@@ -2,6 +2,7 @@ from __future__ import annotations
 from os.path import exists
 from os import mkdir, listdir
 import argparse
+import pickle
 from post_synth import replace_blocks
 
 from bqskit.ir.circuit import Circuit
@@ -16,6 +17,7 @@ from mapping import do_layout, do_routing, random_layout
 from mapping import dummy_layout, dummy_routing, dummy_synthesis
 from topology import get_logical_operations, kernel_type, run_stats, match_kernel
 from util import (
+	load_block_circuit,
 	load_circuit_structure,
 	save_block_topology,
 	setup_options,
@@ -61,7 +63,11 @@ if __name__ == '__main__':
 		help="[pytket | qiskit]"
 	)
 	parser.add_argument("--alltoall",action="store_true",
-		help="synthesize to all to all")
+		help="synthesize to all to all"
+	)
+	parser.add_argument("--logical_connectivity",action="store_true",
+		help="synthesize to all to all"
+	)
 	parser.add_argument("--layout", dest="layout", action="store",
 		default="none", type=str,
 		help="[none | random | sabre]"
@@ -177,6 +183,13 @@ if __name__ == '__main__':
 					for j in range(args.blocksize-1, i, -1):
 						subtopology.add((i,j))
 				print(subtopology)
+			elif args.logical_connectivity:
+				subtopology = set(
+					get_logical_operations(
+						load_block_circuit(block_path, options)
+					)
+				)
+				print(subtopology)
 			else:
 				subtopology = match_kernel(
 					block_path,
@@ -254,12 +267,13 @@ if __name__ == '__main__':
 				"skipping relayout" 
 			)
 		else:
-			do_layout(
+			logical_to_physical = do_layout(
 				options["synthesized_qasm_file"],
 				options["coupling_map"], 
 				options["relayout_qasm_file"],
 			)
-
+			with open(options["relayout_remapping_file"], "wb") as f:
+				pickle.dump(logical_to_physical, f)
 		#endregion
 
 		# Routing
