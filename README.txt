@@ -14,4 +14,11 @@ Use QISKIT transpiler to get mapping for the circuit
 
 Run partitioning/synthesis on the physically mapped circuit
 
+# Dependencies:
+pip install bqskit qiskit pytket scipy numpy networkx
 
+# Before running:
+mkdir layout_qasm relayout_qasm mapped_qasm synthesized_qasm resynthesized_qasm synthesis_files block_files subtopology_files
+
+# Running QuToP
+python qutop.py --blocksize <3|4|5> --topology <mesh|falcon|linear> --partitioner <quick|scan|greedy> [--partition_only] qasm/<qasm_file>
