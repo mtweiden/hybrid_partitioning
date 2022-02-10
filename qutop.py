@@ -207,7 +207,6 @@ if __name__ == '__main__':
 				f"    Kernel: {kernel_type(subtopology, len(structure[block_num]))}"
 				f" - {subtopology}\n"
 			)
-
 		summary = get_summary(options, block_files)
 		with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
 			f.write(summary)
