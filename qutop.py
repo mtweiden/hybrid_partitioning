@@ -130,16 +130,7 @@ if __name__ == '__main__':
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
 
-		machine_edges = get_logical_operations(circuit)
-		logical_machine = MachineModel(
-			num_qudits = options["num_p"],
-			coupling_graph = machine_edges
-		)
-		data = {
-			"machine_model": logical_machine,
-		}
-
-		partitioner.run(circuit, data)
+		partitioner.run(circuit)
 
 		saver = SaveIntermediatePass(
 			"block_files/", 
