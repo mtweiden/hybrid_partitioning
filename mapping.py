@@ -6,13 +6,14 @@ from typing import Any
 from qiskit import QuantumCircuit
 import qiskit
 from qiskit.transpiler import CouplingMap
-from qiskit.transpiler.passes import SabreLayout, SabreSwap
+from qiskit.transpiler.passes import (
+	SabreLayout, SabreSwap, LookaheadSwap, 
+)
 from qiskit.transpiler.passmanager import PassManager
 from pytket.qasm import circuit_to_qasm_str, circuit_from_qasm
 from pytket.routing import Architecture, route
 from pytket.transform import Transform
 # Standard dependencies
-from math import ceil, sqrt
 from re import match, findall
 from sys import argv
 from random import shuffle
@@ -93,30 +94,52 @@ def do_routing(
 	# Gather circuit data
 	(num_q, coupling_graph) = get_coupling_map(coupling_map_file)
 
-	if router == "qiskit":
-		try:
-			circ = QuantumCircuit.from_qasm_file(input_qasm_file)
-			if num_q >= circ.width():
-				# Set up Passes
-				#seed = 42
-				coup_map = CouplingMap(list(coupling_graph))
-				routing = SabreSwap(
-					coupling_map=coup_map,
-					heuristic='lookahead',
-					#seed=seed
-				)
-				pass_man = PassManager([routing])
-				new_circ = pass_man.run(circ)
-				new_qasm = new_circ.qasm()
-				#qiskit_map = routing.property_set['final_layout'].get_virtual_bits()
-				#l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
-			else:
+	if "qiskit" in router:
+		if "lookahead" in router:
+			try:
+				circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+				if num_q >= circ.width():
+					# Set up Passes
+					#seed = 42
+					coup_map = CouplingMap(list(coupling_graph))
+					routing = LookaheadSwap(
+						coupling_map=coup_map,
+						search_depth=5,
+						search_width=5,
+						#seed=seed
+					)
+					pass_man = PassManager([routing])
+					new_circ = pass_man.run(circ)
+					new_qasm = new_circ.qasm()
+				else:
+					print("  WARNING: Router could not handle this coupling graph")
+					return False
+			except (qiskit.transpiler.exceptions.CouplingError,
+				qiskit.transpiler.exceptions.TranspilerError):
 				print("  WARNING: Router could not handle this coupling graph")
 				return False
-		except (qiskit.transpiler.exceptions.CouplingError,
-			qiskit.transpiler.exceptions.TranspilerError):
-			print("  WARNING: Router could not handle this coupling graph")
-			return False
+		else:
+			try:
+				circ = QuantumCircuit.from_qasm_file(input_qasm_file)
+				if num_q >= circ.width():
+					# Set up Passes
+					#seed = 42
+					coup_map = CouplingMap(list(coupling_graph))
+					routing = SabreSwap(
+						coupling_map=coup_map,
+						heuristic='lookahead',
+						#seed=seed
+					)
+					pass_man = PassManager([routing])
+					new_circ = pass_man.run(circ)
+					new_qasm = new_circ.qasm()
+				else:
+					print("  WARNING: Router could not handle this coupling graph")
+					return False
+			except (qiskit.transpiler.exceptions.CouplingError,
+				qiskit.transpiler.exceptions.TranspilerError):
+				print("  WARNING: Router could not handle this coupling graph")
+				return False
 	elif router == "pytket":
 		circ = circuit_from_qasm(input_qasm_file)
 		arch = Architecture(connections=list(coupling_graph))
