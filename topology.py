@@ -188,6 +188,8 @@ def kernel_type(kernel_edges, num_qudits) -> str:
 		if len(kernel_edges) == 2: 
 			if deg_list[0] == 1 and deg_list[1] == 1 and deg_list[2] == 2:
 				kernel_name = "3-line"
+		elif len(kernel_edges) == 3:
+			kernel_name = "3-all"
 	elif num_qudits == 4:
 		# 3-line: 2 edges and 3 distinct qubits
 		# 2-discon: 2 disconnected 2-lines, 2 edges and 4 distinct qubits
@@ -205,7 +207,14 @@ def kernel_type(kernel_edges, num_qudits) -> str:
 				kernel_name = "4-line"
 		# 4-ring: 4 edges
 		elif len(kernel_edges) == 4:
-			kernel_name = "4-ring"
+			if deg_list[0] == 1 and deg_list[1] == deg_list[2] == 2 and deg_list[3] == 3:
+				kernel_name = "4-kite"
+			else:
+				kernel_name = "4-ring"
+		elif len(kernel_edges) == 5:
+			kernel_name = "4-theta"
+		elif len(kernel_edges) == 6:
+			kernel_name = "4-all"
 	elif num_qudits == 5:
 		# 2-3-discon
 		if len(kernel_edges) == 3:
@@ -221,6 +230,9 @@ def kernel_type(kernel_edges, num_qudits) -> str:
 		# 5-dipper
 		elif len(kernel_edges) == 5:
 			kernel_name = "5-dipper"
+
+		elif len(kernel_edges) == 10:
+			kernel_name = "5-all"
 
 	return kernel_name
 
@@ -419,7 +431,7 @@ def match_kernel(
 		# 2-3-discon, 5-line
 		elif options['topology'] == "linear":
 			templates = [
-				[(0,1), (2,3), (3,4)],
+				#[(0,1), (2,3), (3,4)],
 				[(0,1), (1,2), (2,3), (3,4)],
 			]
 
@@ -532,7 +544,8 @@ def run_stats(
 	depth_list  = []
 	edge_score_list  = []
 	node_score_list  = []
-	names = possible_kernel_names(options["blocksize"], options["topology"])
+	#names = possible_kernel_names(options["blocksize"], options["topology"])
+	names = possible_kernel_names(options["blocksize"], "mesh")
 	kernel_dict = {k:0 for k in names}
 	kernel_coverage = {k:0 for k in names}
 

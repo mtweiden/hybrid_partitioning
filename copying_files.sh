@@ -1,0 +1,40 @@
+cp   synthesis_files/lines-shor_26_mesh_36_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-shor_26_falcon_27_blocksize_3_quick_kernel
+cp subtopology_files/lines-shor_26_mesh_36_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-shor_26_falcon_27_blocksize_3_quick_kernel
+cp   synthesis_files/lines-shor_26_mesh_36_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-shor_26_linear_26_blocksize_3_quick_kernel
+cp subtopology_files/lines-shor_26_mesh_36_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-shor_26_linear_26_blocksize_3_quick_kernel
+
+cp   synthesis_files/lines-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-hubbard_18_falcon_27_blocksize_3_quick_kernel
+cp subtopology_files/lines-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-hubbard_18_falcon_27_blocksize_3_quick_kernel
+cp   synthesis_files/lines-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-hubbard_18_linear_18_blocksize_3_quick_kernel
+cp subtopology_files/lines-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-hubbard_18_linear_18_blocksize_3_quick_kernel
+
+cp   synthesis_files/lines-qft_64_mesh_64_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-qft_64_falcon_65_blocksize_3_quick_kernel
+cp subtopology_files/lines-qft_64_mesh_64_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-qft_64_falcon_65_blocksize_3_quick_kernel
+cp   synthesis_files/lines-qft_64_mesh_64_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-qft_64_linear_64_blocksize_3_quick_kernel
+cp subtopology_files/lines-qft_64_mesh_64_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-qft_64_linear_64_blocksize_3_quick_kernel
+
+cp   synthesis_files/lines-add_101_mesh_121_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-add_101_falcon_113_blocksize_3_quick_kernel
+cp subtopology_files/lines-add_101_mesh_121_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-add_101_falcon_113_blocksize_3_quick_kernel
+cp   synthesis_files/lines-add_101_mesh_121_blocksize_3_quick_kernel/*.qasm      synthesis_files/lines-add_101_linear_101_blocksize_3_quick_kernel
+cp subtopology_files/lines-add_101_mesh_121_blocksize_3_quick_kernel/*.pickle  subtopology_files/lines-add_101_linear_101_blocksize_3_quick_kernel
+
+
+cp   synthesis_files/alls-shor_26_mesh_36_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-shor_26_falcon_27_blocksize_3_quick_kernel
+cp subtopology_files/alls-shor_26_mesh_36_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-shor_26_falcon_27_blocksize_3_quick_kernel
+cp   synthesis_files/alls-shor_26_mesh_36_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-shor_26_linear_26_blocksize_3_quick_kernel
+cp subtopology_files/alls-shor_26_mesh_36_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-shor_26_linear_26_blocksize_3_quick_kernel
+
+cp   synthesis_files/alls-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-hubbard_18_falcon_27_blocksize_3_quick_kernel
+cp subtopology_files/alls-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-hubbard_18_falcon_27_blocksize_3_quick_kernel
+cp   synthesis_files/alls-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-hubbard_18_linear_18_blocksize_3_quick_kernel
+cp subtopology_files/alls-hubbard_18_mesh_25_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-hubbard_18_linear_18_blocksize_3_quick_kernel
+
+cp   synthesis_files/alls-qft_64_mesh_64_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-qft_64_falcon_65_blocksize_3_quick_kernel
+cp subtopology_files/alls-qft_64_mesh_64_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-qft_64_falcon_65_blocksize_3_quick_kernel
+cp   synthesis_files/alls-qft_64_mesh_64_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-qft_64_linear_64_blocksize_3_quick_kernel
+cp subtopology_files/alls-qft_64_mesh_64_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-qft_64_linear_64_blocksize_3_quick_kernel
+
+cp   synthesis_files/alls-add_101_mesh_121_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-add_101_falcon_113_blocksize_3_quick_kernel
+cp subtopology_files/alls-add_101_mesh_121_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-add_101_falcon_113_blocksize_3_quick_kernel
+cp   synthesis_files/alls-add_101_mesh_121_blocksize_3_quick_kernel/*.qasm      synthesis_files/alls-add_101_linear_101_blocksize_3_quick_kernel
+cp subtopology_files/alls-add_101_mesh_121_blocksize_3_quick_kernel/*.pickle  subtopology_files/alls-add_101_linear_101_blocksize_3_quick_kernel

@@ -81,17 +81,12 @@ if __name__ == '__main__':
 	if not exists(options["synthesis_dir"]):
 		mkdir(options["synthesis_dir"])
 
-	# Layout
-	#region layout
-	print("="*80)
-	print(f"Doing layout for unsynthesized {options['unsynthesized_layout']}...")
-	print("="*80) 
-	if exists(options["unsynthesized_layout"]):
-		print(
-			f"Found existing file for {options['unsynthesized_layout']}, "
-			"skipping layout"
-		)
-	else:
+	## Layout
+	##region layout
+	#print("="*80)
+	#print(f"Doing layout for unsynthesized {options['unsynthesized_layout']}...")
+	#print("="*80) 
+	if not exists(options["unsynthesized_layout"]):
 		l2p_mapping = manual_layout(
 			options["layout_qasm_file"],
 			options["relayout_remapping_file"],
@@ -100,6 +95,11 @@ if __name__ == '__main__':
 		)
 		with open(options["unsynthesized_qubit_remapping"], "wb") as f:
 			pickle.dump(l2p_mapping, f)
+	#else:
+	#	print(
+	#		f"Found existing file for {options['unsynthesized_layout']}, "
+	#		"skipping layout"
+	#	)
 
 	#endregion
 
@@ -113,30 +113,30 @@ if __name__ == '__main__':
 			block_names.append(bf.split(".pickle")[0])
 	#endregion
 
-	# Routing
-	#region routing
-	print("="*80)
-	print(f"Doing Routing for {options['unsynthesized_layout']}...")
-	print("="*80)
-	if exists(options["unsynthesized_mapping"]):
-		print(
-			f"Found existing file for {options['unsynthesized_mapping']}, "
-			"skipping routing" 
-		)
-	else:
+	## Routing
+	##region routing
+	#print("="*80)
+	#print(f"Doing Routing for {options['unsynthesized_layout']}...")
+	#print("="*80)
+	if not exists(options["unsynthesized_mapping"]):
 		l2p_mapping = do_routing(
 			options["unsynthesized_layout"], 
 			options["coupling_map"], 
 			options["unsynthesized_mapping"],
 			options,
 		)
+	#else:
+	#	print(
+	#		f"Found existing file for {options['unsynthesized_mapping']}, "
+	#		"skipping routing" 
+	#	)
 	#endregion
 
-	# Collect stats
-	#region collections
-	print("="*80)
-	print(f"Collecting stats about each partiiton")
-	print("="*80)
+	## Collect stats
+	##region collections
+	#print("="*80)
+	#print(f"Collecting stats about each partiiton")
+	#print("="*80)
 	if args.synthesis_impact:
 		mapped_analysis = options["mapped_qasm_file"]
 		block_dir = options["synthesis_dir"]
@@ -160,12 +160,18 @@ if __name__ == '__main__':
 			new_group.append(l2p_mapping[qudit])
 		new_structure.append(new_group)
 
+	# Get list of all block subtopologies
+	subtopology_list = sorted(listdir(options['subtopology_dir']))
+	subtopology_list.remove("summary.txt")
+
 	analyzer = PartitionAnalyzer(
 		mapped_analysis,
 		block_dir,
 		block_files,
 		new_structure,
-		options["num_p"]
+		options["num_p"],
+		options["subtopology_dir"],
+		subtopology_list,
 	)
 
 	analyzer.run()

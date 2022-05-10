@@ -12,7 +12,7 @@ from networkx.classes.graph import Graph
 from math import sqrt, ceil
 from bqskit import Circuit
 from bqskit.ir.lang.qasm2.qasm2	import OPENQASM2Language
-from bqskit.passes.util.converttocnot import ToCNOTPass
+#from bqskit.passes.util.converttocnot import ToCNOTPass
 
 from mapping import find_num_qudits
 
@@ -175,6 +175,7 @@ def setup_options(
 	options["mapped_qasm_file"] = "mapped_qasm/" + target_name + f"_{args.router}" + ".qasm"
 	options["remapped_qasm_file"] = "mapped_qasm/" + f"{target_name}_{args.router}_remapped.qasm"
 	options["synthesis_dir"] = "synthesis_files/" + target_name
+	options["opt_dir"] = "optimized_files/" + target_name
 	options["resynthesis_dir"] = "synthesis_files/" + target_name + "_resynth"
 	options["nosynth_dir"] = options["synthesis_dir"] + f"_{args.router}_nosynth"
 	options["subtopology_dir"] = "subtopology_files/" + target_name
@@ -222,7 +223,7 @@ def get_mapping_results(
 				swaps += 1
 	with open(path, "r") as f:
 		circ = OPENQASM2Language().decode(f.read())
-		ToCNOTPass().run(circ)
+#		ToCNOTPass().run(circ)
 		depth = circ.num_cycles
 		parallelism = circ.parallelism
 	return (
@@ -245,7 +246,7 @@ def get_remapping_results(
 				swaps += 1
 	with open(path, "r") as f:
 		circ = OPENQASM2Language().decode(f.read())
-		ToCNOTPass().run(circ)
+#		ToCNOTPass().run(circ)
 		depth = circ.num_cycles
 		parallelism = circ.parallelism
 	return (
@@ -265,7 +266,7 @@ def get_original_count(
 				cnots += 1
 	with open(path, "r") as f:
 		circ = OPENQASM2Language().decode(f.read())
-		ToCNOTPass().run(circ)
+#		ToCNOTPass().run(circ)
 		depth = circ.num_cycles
 		parallelism = circ.parallelism
 	return (
