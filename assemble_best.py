@@ -43,8 +43,8 @@ if __name__ == '__main__':
 	print(benchmark)
 	bname = benchmark.split('_preoptimized')[0]
 	mesh_suffices = (
-		"mesh_16", "mesh_25", "mesh_36", "mesh_49",
-		"mesh_64", "mesh_81", "mesh_100", "mesh_121"
+		"mesh_4", "mesh_9", "mesh_16", "mesh_25", "mesh_36", 
+		"mesh_49","mesh_64", "mesh_81", "mesh_100", "mesh_121"
 	)
 	for suffix in mesh_suffices:
 		mesh_name = f'{bname}_preoptimized_{suffix}_blocksize_4_scan'
@@ -72,9 +72,9 @@ if __name__ == '__main__':
 	## biased
 	#best_blocks     = f'synthesis_files/neighbors_biased-{benchmark}_kernel'
 	#best_topologies = f'subtopology_files/neighbors_biased-{benchmark}_kernel'
-	## trees
-	#best_blocks       = f'synthesis_files/neighbors_trees-{benchmark}_kernel'
-	#best_topologies = f'subtopology_files/neighbors_trees-{benchmark}_kernel'
+	# trees
+	best_blocks       = f'synthesis_files/neighbors_trees-{benchmark}_kernel'
+	best_topologies = f'subtopology_files/neighbors_trees-{benchmark}_kernel'
 	## embedded
 	#best_blocks     = f'synthesis_files/neighbors_embedded-{benchmark}_kernel'
 	#best_topologies = f'subtopology_files/neighbors_embedded-{benchmark}_kernel'
@@ -87,9 +87,9 @@ if __name__ == '__main__':
 	## trees
 	#best_blocks       = f'synthesis_files/trees-{benchmark}_kernel'
 	#best_topologies = f'subtopology_files/trees-{benchmark}_kernel'
-	# embedded
-	best_blocks     = f'synthesis_files/embedded-{benchmark}_kernel'
-	best_topologies = f'subtopology_files/embedded-{benchmark}_kernel'
+	## embedded
+	#best_blocks     = f'synthesis_files/embedded-{benchmark}_kernel'
+	#best_topologies = f'subtopology_files/embedded-{benchmark}_kernel'
 	## best
 	#best_blocks     = f'synthesis_files/best-{benchmark}_kernel'
 	#best_topologies = f'subtopology_files/best-{benchmark}_kernel'
@@ -104,8 +104,8 @@ if __name__ == '__main__':
 		circuit_lines = Circuit.from_file(f'{benchmark_lines}/{block}')
 		circuit_stars = Circuit.from_file(f'{benchmark_stars}/{block}')
 		circuit_rings = Circuit.from_file(f'{benchmark_rings}/{block}')
-		circuit_kites = Circuit.from_file(f'{benchmark_kites}/{block}')
-		circuit_thetas = Circuit.from_file(f'{benchmark_thetas}/{block}')
+		#circuit_kites = Circuit.from_file(f'{benchmark_kites}/{block}')
+		#circuit_thetas = Circuit.from_file(f'{benchmark_thetas}/{block}')
 		#circuit_alls  = Circuit.from_file(f'{benchmark_alls}/{block}')
 		#circuit_kites = Circuit(1)
 		#circuit_thetas = Circuit(1)
@@ -116,16 +116,16 @@ if __name__ == '__main__':
 		#kite_bias = 4
 		#theta_bias = 4
 		#all_bias = 500
-		## trees
-		#ring_bias = 10
-		#kite_bias = 20
-		#theta_bias = 20
-		#all_bias = 500
-		# embedded
-		ring_bias = 8
-		kite_bias = 5
-		theta_bias = 40
-		all_bias = 40
+		# trees
+		ring_bias = 10
+		kite_bias = 20
+		theta_bias = 20
+		all_bias = 500
+		## embedded
+		#ring_bias = 3
+		#kite_bias = 10
+		#theta_bias = 40
+		#all_bias = 40
 		## best
 		#ring_bias = 0
 		#kite_bias = 0
@@ -135,11 +135,12 @@ if __name__ == '__main__':
 		cnots_lines = circuit_lines.count(CNOTGate())
 		cnots_stars = circuit_stars.count(CNOTGate()) + 4
 		cnots_rings = circuit_rings.count(CNOTGate()) + ring_bias
-		cnots_kites = circuit_kites.count(CNOTGate()) + kite_bias
-		cnots_thetas= circuit_thetas.count(CNOTGate()) + theta_bias
-		cnots_alls = circuit_alls.count(CNOTGate()) + all_bias
+		#cnots_kites = circuit_kites.count(CNOTGate()) + kite_bias
+		#cnots_thetas= circuit_thetas.count(CNOTGate()) + theta_bias
+		#cnots_alls = circuit_alls.count(CNOTGate()) + all_bias
 
-		cnots_list = [cnots_lines, cnots_stars, cnots_rings, cnots_kites, cnots_thetas, cnots_alls]
+		#cnots_list = [cnots_lines, cnots_stars, cnots_rings, cnots_kites, cnots_thetas, cnots_alls]
+		cnots_list = [cnots_lines, cnots_stars, cnots_rings]
 		min_cnots = min(cnots_list)
 		
 		print(f'Assembling best blocks for {benchmark}...')
@@ -158,17 +159,17 @@ if __name__ == '__main__':
 			print(f'{block} - ring {min_cnots} - {cnots_list}')
 			write_subtopology(get_subtopology(circuit_rings), f'{best_topologies}/{best_topology}')
 			write_block(f'{benchmark_rings}/{block}', f'{best_blocks}/{block}')
-		elif min_cnots == cnots_kites: # kites 
-			print(f'{block} - kite {min_cnots} - {cnots_list}')
-			write_subtopology(get_subtopology(circuit_kites), f'{best_topologies}/{best_topology}')
-			write_block(f'{benchmark_kites}/{block}', f'{best_blocks}/{block}')
-		elif min_cnots == cnots_thetas: # thetas 
-			print(f'{block} - theta {min_cnots} - {cnots_list}')
-			write_subtopology(get_subtopology(circuit_thetas), f'{best_topologies}/{best_topology}')
-			write_block(f'{benchmark_thetas}/{block}', f'{best_blocks}/{block}')
-		elif min_cnots == cnots_alls: # alls 
-			print(f'{block} - all {min_cnots} - {cnots_list}')
-			write_subtopology(get_subtopology(circuit_alls), f'{best_topologies}/{best_topology}')
-			write_block(f'{benchmark_alls}/{block}', f'{best_blocks}/{block}')
+#		elif min_cnots == cnots_kites: # kites 
+#			print(f'{block} - kite {min_cnots} - {cnots_list}')
+#			write_subtopology(get_subtopology(circuit_kites), f'{best_topologies}/{best_topology}')
+#			write_block(f'{benchmark_kites}/{block}', f'{best_blocks}/{block}')
+#		elif min_cnots == cnots_thetas: # thetas 
+#			print(f'{block} - theta {min_cnots} - {cnots_list}')
+#			write_subtopology(get_subtopology(circuit_thetas), f'{best_topologies}/{best_topology}')
+#			write_block(f'{benchmark_thetas}/{block}', f'{best_blocks}/{block}')
+#		elif min_cnots == cnots_alls: # alls 
+#			print(f'{block} - all {min_cnots} - {cnots_list}')
+#			write_subtopology(get_subtopology(circuit_alls), f'{best_topologies}/{best_topology}')
+#			write_block(f'{benchmark_alls}/{block}', f'{best_blocks}/{block}')
 
 
