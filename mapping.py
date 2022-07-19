@@ -15,7 +15,6 @@ from pytket.routing import Architecture, route
 from pytket.transform import Transform
 from pytket.passes import FullPeepholeOptimise
 # Standard dependencies
-from math import ceil, sqrt
 from re import match, findall
 from sys import argv
 from random import shuffle
@@ -113,8 +112,6 @@ def do_routing(
 					pass_man = PassManager([routing])
 					new_circ = pass_man.run(circ)
 					new_qasm = new_circ.qasm()
-					#qiskit_map = routing.property_set['final_layout'].get_virtual_bits()
-					#l2p_map = {l.index: qiskit_map[l] for l in qiskit_map}
 				else:
 					print("  WARNING: Router could not handle this coupling graph")
 					return False
