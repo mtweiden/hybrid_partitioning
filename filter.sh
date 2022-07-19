@@ -1,0 +1,41 @@
+block_files=(
+	"trees-mult_16_preoptimized_falcon_16_blocksize_4_scan"
+	"trees-mult_32_preoptimized_falcon_65_blocksize_4_scan"
+	"trees-qft_64_preoptimized_falcon_65_blocksize_4_scan"
+	"trees-qft_100_preoptimized_falcon_113_blocksize_4_scan"
+	"trees-add_65_preoptimized_falcon_65_blocksize_4_scan"
+	"trees-add_101_preoptimized_falcon_113_blocksize_4_scan"
+	"trees-hubbard_18_preoptimized_falcon_27_blocksize_4_scan"
+	"trees-shor_26_preoptimized_falcon_27_blocksize_4_scan"
+	"embedded-mult_16_preoptimized_falcon_16_blocksize_4_scan"
+	"embedded-mult_32_preoptimized_falcon_65_blocksize_4_scan"
+	"embedded-qft_64_preoptimized_falcon_65_blocksize_4_scan"
+	"embedded-qft_100_preoptimized_falcon_113_blocksize_4_scan"
+	"embedded-add_65_preoptimized_falcon_65_blocksize_4_scan"
+	"embedded-add_101_preoptimized_falcon_113_blocksize_4_scan"
+	"embedded-hubbard_18_preoptimized_falcon_27_blocksize_4_scan"
+	"embedded-shor_26_preoptimized_falcon_27_blocksize_4_scan"
+	"biased-mult_16_preoptimized_falcon_16_blocksize_4_scan"
+	"biased-mult_32_preoptimized_falcon_65_blocksize_4_scan"
+	"biased-qft_64_preoptimized_falcon_65_blocksize_4_scan"
+	"biased-qft_100_preoptimized_falcon_113_blocksize_4_scan"
+	"biased-add_65_preoptimized_falcon_65_blocksize_4_scan"
+	"biased-add_101_preoptimized_falcon_113_blocksize_4_scan"
+	"biased-hubbard_18_preoptimized_falcon_27_blocksize_4_scan"
+	"biased-shor_26_preoptimized_falcon_27_blocksize_4_scan"
+	"best-mult_16_preoptimized_falcon_16_blocksize_4_scan"
+	"best-mult_32_preoptimized_falcon_65_blocksize_4_scan"
+	"best-qft_64_preoptimized_falcon_65_blocksize_4_scan"
+	"best-qft_100_preoptimized_falcon_113_blocksize_4_scan"
+	"best-add_65_preoptimized_falcon_65_blocksize_4_scan"
+	"best-add_101_preoptimized_falcon_113_blocksize_4_scan"
+	"best-hubbard_18_preoptimized_falcon_27_blocksize_4_scan"
+	"best-shor_26_preoptimized_falcon_27_blocksize_4_scan"
+
+)
+
+for benchmark in ${block_files[@]}
+do
+	echo "${benchmark}"
+	python filter.py "block_files/${benchmark}" "synthesis_files/${benchmark}_kernel"
+done

@@ -45,7 +45,7 @@ def weighted_astar(circ, v, weight, options):
 
 
 def num_tasks(num_synth_procs : int) -> int:
-	return max([cpu_count(logical=False)//num_synth_procs, 1])
+	return min([max([cpu_count(logical=False)//num_synth_procs, 1]), 128])
 
 
 def call_old_codebase_leap(

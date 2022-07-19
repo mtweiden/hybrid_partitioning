@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from statistics import mean, median
+from pickle import load
 
 from bqskit.ir.operation import Operation
 from topology import get_logical_operations
@@ -9,6 +10,9 @@ from bqskit import Circuit
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.ir.gates.constant.swap import SwapGate
 from bqskit.ir.gates.constant.cx import CNOTGate
+from bqskit.ir.gates.parameterized.u3 import U3Gate
+
+from topology import kernel_type
 
 class PartitionRecord():
 	"""
@@ -30,6 +34,7 @@ class PartitionRecord():
 			circ = OPENQASM2Language().decode(f.read())
 		self.unseen_operations = get_logical_operations(circ, qubit_group)
 		self.seen_operations   = []
+		self.block_file = block_file
 
 		self.touches = {q:0 for q in qubit_group}
 		self.travel  = {q:[] for q in qubit_group}
@@ -37,6 +42,7 @@ class PartitionRecord():
 		self.stop_cycle = -1
 		self.swaps = 0
 		self.cnots = 0
+		self.u3s = circ.count(U3Gate())
 
 	def is_partition_started(self) -> bool:
 		return len(self.seen_operations) > 0
@@ -95,6 +101,12 @@ class PartitionRecord():
 			b = max(block_operands)
 			match = sum([u == a, v == b])
 			if match > 0:
+				#if match != 2:
+				#	raise RuntimeError(
+				#		f'{u},{v} - {a},{b}\n'
+				#		f'{self.unseen_operations}\n'
+				#		f'{self.block_file}'
+				#	)
 				return match # Should always return 2
 		return 0
 
@@ -123,7 +135,10 @@ class PartitionRecord():
 		elif match_code == 1:
 			raise RuntimeError(
 				f"Got a partial match of operands!\n"
-				f"logical: {logical_numbers} - qubit group: {self.qubit_group}"
+				f"File: {self.block_file}\n"
+				f"logical: {logical_numbers} - qubit group: {self.qubit_group}\n"
+				f"seen: {self.seen_operations}\n"
+				f"unseen: {self.unseen_operations}\n"
 			)
 		else: # Both operands match
 			if not self.is_partition_started():
@@ -174,16 +189,21 @@ class PartitionAnalyzer():
 		block_list     : Sequence[str],
 		structure_list : Sequence[Sequence[int]],
 		num_physical_qubits : int,
+		subtopology_dir  : str | None = None,
+		subtopology_list : Sequence[str] | None = None,
 	):
 		self.circuit_file : str  = mapped_circuit_file
 		self.block_dir    : str  = block_dir
 		self.block_list   : Sequence[Sequence[int]] = block_list 
+		self.subtopology_dir : str | None = subtopology_dir
+		self.subtopology_list : Sequence[str] | None = subtopology_list
 
 		self.record_list : Sequence[PartitionRecord] = []
 		for block_num in range(len(self.block_list)):
 			self.record_list.append(
 				PartitionRecord(
 					structure_list[block_num],
+					#sorted(structure_list[block_num]), # Should already be sorted
 					f"{block_dir}/{block_list[block_num]}",
 				)
 			)
@@ -272,7 +292,10 @@ class PartitionAnalyzer():
 		total_distances = []
 		total_touches = []
 		durations = []
+		block_cnots = []
+		block_u3s = []
 		internal_swaps = []
+		block_widths = []
 		for record in self.record_list:
 			touches = list(record.touches.values())
 			total_touch = 0
@@ -286,53 +309,33 @@ class PartitionAnalyzer():
 				total_distance += max(len(d) - 1, 0)
 			total_distances.append(total_distance)
 			average_distances.append(total_distance/len(record.qubit_group))
-			durations.append(record.stop_cycle - record.stop_cycle)
+			durations.append(record.stop_cycle - record.start_cycle)
+			block_cnots.append(record.cnots)
+			block_u3s.append(record.u3s)
 			internal_swaps.append(record.swaps)
+			block_widths.append(len(record.qubit_group))
 
 		string = ""
 		blocksize = max([
 			len(self.record_list[x].qubit_group) 
 			for x in range(len(self.record_list))
 		])
-		string += f"block_num, duration, internal swaps, "
-		for q in range(blocksize):
-			string += f"distance[{q}], "
-		for q in range(blocksize):
-			string += f"touches[{q}], "
-		string += "\n"
+		string += f"block_num, qubits, cnots, u3s, internal swaps, duration, total distance, total touches, kernels\n"
 		for block_num in range(len(self.record_list)):
 			string += (
-				f"{block_num}, {durations[block_num]}, {internal_swaps[block_num]}, "
+				f"{block_num}, {block_widths[block_num]}, "
+				f"{block_cnots[block_num]}, {block_u3s[block_num]}, "
+				f"{internal_swaps[block_num]}, "
+				f"{durations[block_num]}, {total_distances[block_num]}, "
+				f"{total_touches[block_num]}"
 			)
-			qubit_group = self.record_list[block_num].qubit_group
-			for q in qubit_group:
-				string += f"{len(self.record_list[block_num].travel[q])}, "
-			for q in qubit_group:
-				string += f"{self.record_list[block_num].touches[q]}, "
+			if self.subtopology_dir is not None and self.subtopology_list is not None:
+				subtop_path = f"{self.subtopology_dir}/{self.subtopology_list[block_num]}"
+				with open(subtop_path, "rb") as f:
+					edges = load(f)
+				num_qubits  = block_widths[block_num]
+				kernel_name = kernel_type(edges, num_qubits)
+				string += f", {kernel_name}"
 			string += "\n"
-		print(string)
-		
-		#for block_num in range(len(self.record_list)):
-		#	string = f"BLOCK {block_num}\n"
-		#	#string += f"  total distance: {total_distances[block_num]}\n"
-		#	string += f"  average distance: {average_distances[block_num]}\n"
-		#	#string += f"  total touches: {total_touches[block_num]}\n"
-		#	string += f"  average touches:  {average_touches[block_num]}\n"
-		#	string += f"  duration:         {durations[block_num]}\n"
-		#	string += f"  swaps:            {internal_swaps[block_num]}\n"
-		#	print(string)
 
-		#final_stats = (
-		#	f"Total CNOTs: {self.cnots}\n"
-		#	f"Total SWAPs: {self.swaps}\n"
-		#	f"  Internal SWAPs:   {sum(internal_swaps)}\n"
-		#	f"  Average internal: {round(mean(internal_swaps),3)}\n"
-		#	f"  Median internal:  {median(internal_swaps)}\n"
-		#	f"Total disance: {sum(total_distances)}\n"
-		#	f"  Average distance: {round(mean(total_distances), 3)}\n"
-		#	f"  Median  distance: {median(total_distances)}\n"
-		#	f"Total touches: {sum(total_touches)}\n"
-		#	f"  Average touches: {round(mean(total_touches), 3)}\n"
-		#	f"  Median  touches: {median(total_touches)}"
-		#)
-		#print(final_stats)
+		print(string)

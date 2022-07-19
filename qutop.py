@@ -6,6 +6,7 @@ import pickle
 from post_synth import replace_blocks
 
 from bqskit.ir.circuit import Circuit
+from bqskit.ir.gates.constant.cx import CNOTGate
 from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.compiler.machine import MachineModel
 from bqskit.passes.partitioning.scan import ScanPartitioner
@@ -66,6 +67,9 @@ if __name__ == '__main__':
 		help="synthesize to all to all"
 	)
 	parser.add_argument("--logical_connectivity",action="store_true",
+		help="synthesize to all to all"
+	)
+	parser.add_argument("--optimize",action="store_true",
 		help="synthesize to all to all"
 	)
 	parser.add_argument("--layout", dest="layout", action="store",
@@ -130,16 +134,7 @@ if __name__ == '__main__':
 		else:
 			partitioner = ScanPartitioner(args.blocksize)
 
-		machine_edges = get_logical_operations(circuit)
-		logical_machine = MachineModel(
-			num_qudits = options["num_p"],
-			coupling_graph = machine_edges
-		)
-		data = {
-			"machine_model": logical_machine,
-		}
-
-		partitioner.run(circuit, data)
+		partitioner.run(circuit)
 
 		saver = SaveIntermediatePass(
 			"block_files/", 
@@ -207,7 +202,6 @@ if __name__ == '__main__':
 				f"    Kernel: {kernel_type(subtopology, len(structure[block_num]))}"
 				f" - {subtopology}\n"
 			)
-
 		summary = get_summary(options, block_files)
 		with open(f"{options['subtopology_dir']}/summary.txt", "a") as f:
 			f.write(summary)
@@ -237,6 +231,8 @@ if __name__ == '__main__':
 				options=options,
 			)
 
+		if not exists(options["opt_dir"]):
+			mkdir(options["opt_dir"])
 		# Format QASM as subcircuit & add to circuit
 		for block_num in range(len(block_files)):
 			with open(
@@ -245,6 +241,19 @@ if __name__ == '__main__':
 			) as f:
 				subcircuit_qasm = f.read()
 			subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+			opt_subcircuit = OPENQASM2Language().decode(subcircuit_qasm)
+
+			if args.optimize:
+				print(f"Optimizing block {block_num+1}/{len(block_files)}")
+				if not exists(f"{options['opt_dir']}/{block_names[block_num]}.qasm"):
+					from bqskit.passes.processing.scan import ScanningGateRemovalPass
+					ScanningGateRemovalPass().run(opt_subcircuit)
+					with open(f"{options['opt_dir']}/{block_names[block_num]}.qasm", "w") as f:
+						f.write(OPENQASM2Language().encode(opt_subcircuit))
+				else:
+					opt_subcircuit = Circuit(1).from_file(f"{options['opt_dir']}/{block_names[block_num]}.qasm")
+			if opt_subcircuit.count(CNOTGate()) < subcircuit.count(CNOTGate()):
+				subcircuit = opt_subcircuit
 			# Handle the case where the circuit is still smaller than the qudit
 			# group, should only happen on circuits synthesized in an older
 			# version.
@@ -301,9 +310,12 @@ if __name__ == '__main__':
 					options["mapped_qasm_file"],
 				)
 		#endregion
-	print(run_stats(options, post_stats=False))
-	if not args.partition_only:
-		print(run_stats(options, post_stats=True))
-		if not exists(options["remapped_qasm_file"]):
-			replace_blocks(options)
-		print(run_stats(options, resynthesized=True))
+	## POST PROCESS
+	# post processing
+	
+	#print(run_stats(options, post_stats=False))
+	#if not args.partition_only:
+	#	print(run_stats(options, post_stats=True))
+	#	if not exists(options["remapped_qasm_file"]):
+	#		replace_blocks(options)
+	#	print(run_stats(options, resynthesized=True))
